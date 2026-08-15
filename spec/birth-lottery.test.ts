@@ -7,7 +7,9 @@ import {
   oddsOf,
   pickCountry,
   project,
+  statRange,
   survivalProbability,
+  weightedAverage,
   type Country,
 } from "../lottery";
 
@@ -24,6 +26,7 @@ const countryA: Country = {
   lon: 0,
   population: stat(1_000_000),
   birthRatePer1000: stat(20), // annualBirths = 20,000
+  lifeExpectancy: stat(70),
 };
 
 const countryB: Country = {
@@ -35,6 +38,7 @@ const countryB: Country = {
   lon: 20,
   population: stat(2_000_000),
   birthRatePer1000: stat(10), // annualBirths = 20,000
+  lifeExpectancy: stat(80),
 };
 
 const countryC: Country = {
@@ -86,6 +90,28 @@ describe("survivalProbability", () => {
   it("converts infant mortality per 1,000 into a survival chance", () => {
     expect(survivalProbability(25)).toBeCloseTo(0.975, 10);
     expect(survivalProbability(0)).toBe(1);
+  });
+});
+
+describe("statRange", () => {
+  it("returns the min/max only among countries that report the stat", () => {
+    // countryC has no lifeExpectancy, so it's excluded from the range.
+    expect(statRange(fixtureCountries, (c) => c.lifeExpectancy)).toEqual({ min: 70, max: 80 });
+  });
+
+  it("returns undefined when nobody in the pool reports the stat", () => {
+    expect(statRange(fixtureCountries, (c) => c.pm25)).toBeUndefined();
+  });
+});
+
+describe("weightedAverage", () => {
+  it("weights each country's stat by its own annual births", () => {
+    // (70 * 20,000 + 80 * 20,000) / (20,000 + 20,000) = 75, countryC excluded
+    expect(weightedAverage(fixtureCountries, (c) => c.lifeExpectancy)).toBeCloseTo(75, 10);
+  });
+
+  it("returns undefined when nobody in the pool reports the stat", () => {
+    expect(weightedAverage(fixtureCountries, (c) => c.pm25)).toBeUndefined();
   });
 });
 

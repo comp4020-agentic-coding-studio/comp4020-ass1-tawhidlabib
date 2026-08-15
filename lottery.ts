@@ -95,3 +95,43 @@ export function project(lon: number, lat: number): Projected {
     yPct: Math.min(100, Math.max(0, yPct)),
   };
 }
+
+export interface Range {
+  min: number;
+  max: number;
+}
+
+/** The min and max actually seen across whichever countries report this
+ * stat -- used to scale a stat card's bar to real observed values, not an
+ * arbitrary guessed range. Undefined if no country in the pool reports it. */
+export function statRange(
+  countries: Country[],
+  select: (country: Country) => Stat | undefined,
+): Range | undefined {
+  const values = countries
+    .map(select)
+    .filter((stat): stat is Stat => stat !== undefined)
+    .map((stat) => stat.value);
+  if (values.length === 0) return undefined;
+  return { min: Math.min(...values), max: Math.max(...values) };
+}
+
+/** Population-weighted mean of a stat across the countries that report it,
+ * weighted by the same annualBirths() figure the odds themselves use -- so
+ * it reads as "if you consider everyone born this year", not an average
+ * over countries treated as equally-sized. Undefined if nobody reports it. */
+export function weightedAverage(
+  countries: Country[],
+  select: (country: Country) => Stat | undefined,
+): number | undefined {
+  let weightedSum = 0;
+  let weightTotal = 0;
+  for (const country of countries) {
+    const stat = select(country);
+    if (stat === undefined) continue;
+    const weight = annualBirths(country);
+    weightedSum += stat.value * weight;
+    weightTotal += weight;
+  }
+  return weightTotal > 0 ? weightedSum / weightTotal : undefined;
+}
