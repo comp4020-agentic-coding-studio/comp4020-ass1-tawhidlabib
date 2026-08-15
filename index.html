@@ -11,51 +11,58 @@
       <nav aria-label="Primary"><a href="./">The Birth Lottery</a></nav>
     </header>
     <main>
-      <h1>The Birth Lottery</h1>
-      <p class="intro">
-        Every spin lands you in a real country, weighted by how many babies are
-        actually born there each year — so the odds match where humans are
-        really born, not where anyone would like to be. Hit spin.
-      </p>
-
-      <section class="world-stage" aria-label="World, spin control">
+      <section class="hero" aria-labelledby="hero-heading">
         <div class="world-stage-frame" data-field="frame">
           <div class="world-dots" data-field="world-dots" aria-hidden="true"></div>
-          <div class="skyline" data-testid="skyline" hidden>
+          <div class="skyline" data-testid="skyline" aria-hidden="true" hidden>
             <div class="skyline-silhouette" aria-hidden="true"></div>
-            <div class="skyline-label">
-              <p class="skyline-capital" data-field="capital"></p>
-              <p class="skyline-country" data-field="country"></p>
-            </div>
           </div>
         </div>
-        <button type="button" class="spin" data-testid="spin">Spin</button>
+
+        <div class="hero-overlay">
+          <h1 id="hero-heading">The Birth Lottery</h1>
+
+          <p class="hero-placeholder" data-field="placeholder">
+            Every spin lands you in a real country, weighted by how many
+            babies are actually born there each year — so the odds match
+            where humans are really born, not where anyone would like to be.
+          </p>
+
+          <div class="hero-content" data-field="content" aria-live="polite" hidden>
+            <p class="hero-capital" data-field="capital"></p>
+            <p class="hero-country" data-field="country"></p>
+            <p class="odds" data-field="odds"></p>
+          </div>
+
+          <button type="button" class="spin" data-testid="spin">Spin</button>
+          <p class="spin-hint">or press space</p>
+
+          <div
+            class="history"
+            data-field="history"
+            aria-label="Countries you've been born in this session"
+            hidden
+          ></div>
+        </div>
       </section>
 
-      <section class="result" data-testid="result" aria-live="polite">
-        <p class="result-placeholder" data-field="placeholder">
-          No one's been born yet — hit spin to find out where.
-        </p>
-        <div class="result-content" data-field="content" hidden>
-          <p class="odds" data-field="odds"></p>
-
-          <div class="stats">
-            <div class="stats-group">
-              <h2>Survival &amp; health</h2>
-              <dl data-field="health"></dl>
-            </div>
-            <div class="stats-group">
-              <h2>Basic needs</h2>
-              <dl data-field="needs"></dl>
-            </div>
-            <div class="stats-group">
-              <h2>Economy &amp; work</h2>
-              <dl data-field="economy"></dl>
-            </div>
-            <div class="stats-group">
-              <h2>Connectivity</h2>
-              <dl data-field="connectivity"></dl>
-            </div>
+      <section class="result" data-testid="result">
+        <div class="stats" data-field="stats-panel" hidden>
+          <div class="stats-group">
+            <h2>Survival &amp; health</h2>
+            <div class="stats-cards" data-field="health"></div>
+          </div>
+          <div class="stats-group">
+            <h2>Basic needs</h2>
+            <div class="stats-cards" data-field="needs"></div>
+          </div>
+          <div class="stats-group">
+            <h2>Economy &amp; work</h2>
+            <div class="stats-cards" data-field="economy"></div>
+          </div>
+          <div class="stats-group">
+            <h2>Connectivity</h2>
+            <div class="stats-cards" data-field="connectivity"></div>
           </div>
         </div>
       </section>
@@ -73,7 +80,8 @@
           API (CC BY‑4.0), and each one is shown with the year it was actually
           reported for that country — figures land in different years because
           countries report on different schedules, not because any were
-          cherry-picked.
+          cherry-picked. Tap any stat card above to see its exact indicator
+          and year.
         </p>
         <p data-field="methodology-detail"></p>
         <p>
@@ -83,7 +91,10 @@
           measurements of any individual's parents. Countries without
           population or birth-rate data are left out of the lottery pool
           entirely rather than guessed at; a missing stat for an included
-          country is shown as "not reported", never invented.
+          country is shown as "not reported", never invented. Each stat
+          card's "world average" marker is this page's own population-weighted
+          average across the lottery pool — weighted the same way the odds
+          themselves are, not a World Bank global aggregate figure.
         </p>
       </section>
     </main>

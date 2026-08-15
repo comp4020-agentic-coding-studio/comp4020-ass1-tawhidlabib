@@ -12,9 +12,14 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
-  padding: 0 1rem 3rem;
+  padding: 0 0 3rem;
   font-family:
     system-ui,
     -apple-system,
@@ -29,6 +34,10 @@ a {
   color: var(--accent);
 }
 
+header nav {
+  padding: 0 1rem;
+}
+
 header nav a {
   display: inline-block;
   padding: 1rem 0;
@@ -40,34 +49,33 @@ header nav a {
 main {
   max-width: 56rem;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
 h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
-  margin-bottom: 0.25rem;
+  margin: 0 0 0.25rem;
 }
 
-.intro {
-  max-width: 42rem;
-  color: #45454f;
-}
+/* Hero: the whole spin/reveal moment, full-bleed regardless of <main>'s
+   max-width. overflow-x: hidden on html/body (above) guards against the
+   100vw trick introducing a horizontal scrollbar. */
 
-/* World stage */
-
-.world-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  margin: 1.5rem 0;
+.hero {
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  height: min(88vh, 850px);
+  min-height: 30rem;
+  margin-bottom: 2rem;
+  overflow: hidden;
+  transform: translateX(-50%);
+  background: #0e1b2b;
 }
 
 .world-stage-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 5 / 3;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border-radius: 0.75rem;
   background: linear-gradient(180deg, #0e1b2b 0%, #16283d 100%);
 }
 
@@ -84,7 +92,7 @@ h1 {
 }
 
 .world-stage-frame.zoomed .world-dots {
-  transform: scale(14);
+  transform: scale(18);
   opacity: 0;
 }
 
@@ -103,9 +111,8 @@ h1 {
 }
 
 /* Generative capital skyline -- one consistent stylised silhouette reused for
-   every country, labelled with the real capital + country name. No sourced
-   photography, so no licensing/attribution surface and uniform quality
-   across all ~200 countries. */
+   every country. No sourced photography, so no licensing/attribution surface
+   and uniform quality across all ~200 countries. */
 
 .skyline {
   position: absolute;
@@ -129,11 +136,7 @@ h1 {
   inset: 0;
   background:
     linear-gradient(180deg, #ff9d6c 0%, #2c2a5e 55%, #16162e 100%),
-    repeating-linear-gradient(
-      90deg,
-      #05050a 0 3%,
-      transparent 3% 4%
-    );
+    repeating-linear-gradient(90deg, #05050a 0 3%, transparent 3% 4%);
   clip-path: polygon(
     0% 100%,
     0% 70%,
@@ -176,30 +179,59 @@ h1 {
   );
 }
 
-.skyline-label {
+/* Overlay: title, reveal copy, spin control, history -- all layered directly
+   on top of the dot-map/skyline art, bottom-anchored behind a scrim so text
+   stays legible over whichever background is showing. */
+
+.hero-overlay {
   position: absolute;
-  left: 50%;
-  bottom: 8%;
-  translate: -50% 0;
-  text-align: center;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 2rem;
   color: #fff;
-  text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
+  background: linear-gradient(to top, rgb(0 0 0 / 70%), transparent 55%);
 }
 
-.skyline-capital {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
+.hero-overlay h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  text-shadow: 0 1px 6px rgb(0 0 0 / 50%);
 }
 
-.skyline-country {
+.hero-placeholder {
+  max-width: 34rem;
+  margin: 0 0 0.5rem;
+  color: rgb(255 255 255 / 85%);
+}
+
+.hero-content {
+  margin: 0 0 0.5rem;
+}
+
+.hero-capital {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: clamp(1.4rem, 4vw, 2.1rem);
+  font-weight: 800;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 50%);
+}
+
+.hero-country {
+  margin: 0 0 0.4rem;
   opacity: 0.85;
 }
 
+.odds {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
 .spin {
-  padding: 0.75rem 2rem;
+  align-self: flex-start;
+  padding: 0.85rem 2.25rem;
   font-size: 1.1rem;
   font-weight: 700;
   color: #fff;
@@ -214,24 +246,59 @@ h1 {
   cursor: wait;
 }
 
+.spin:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
 .spin:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+
+.spin-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgb(255 255 255 / 75%);
+  font-style: italic;
+}
+
+.history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.history-chip {
+  padding: 0.35rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.history-chip:hover {
+  background: rgb(255 255 255 / 22%);
+}
+
+.history-chip:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.history-chip-current {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* Result panel */
 
 .result {
   margin: 1.5rem 0;
-}
-
-.result-placeholder {
-  color: #6b6b76;
-  font-style: italic;
-}
-
-.odds {
-  font-size: 1.15rem;
-  font-weight: 600;
 }
 
 .stats {
@@ -256,23 +323,94 @@ h1 {
   color: #6b6b76;
 }
 
-.stats-group dl {
-  margin: 0;
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
 }
 
-.stats-group dt {
-  font-size: 0.85rem;
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.stat-card:hover {
+  border-color: var(--accent);
+}
+
+.stat-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.stat-card[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 8%);
+}
+
+.stat-card-label {
+  font-size: 0.78rem;
+  color: #6b6b76;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stat-card-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.stat-bar-track {
+  position: relative;
+  height: 0.5rem;
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.stat-bar-fill {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: transform 700ms ease-out;
+}
+
+.stat-bar-avg-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--ink);
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-bar-fill {
+    transition: none;
+  }
+}
+
+.stat-card-detail {
+  display: block;
+  padding-top: 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
   color: #45454f;
-  margin-top: 0.6rem;
-}
-
-.stats-group dt:first-child {
-  margin-top: 0;
-}
-
-.stats-group dd {
-  margin: 0;
-  font-weight: 600;
+  border-top: 1px solid var(--border);
 }
 
 /* Methodology -- always visible, never a buried tooltip */
@@ -293,11 +431,20 @@ h1 {
 }
 
 @media (width <= 480px) {
+  .hero {
+    height: 75vh;
+    min-height: 26rem;
+  }
+
+  .hero-overlay {
+    padding: 1.25rem;
+  }
+
   .stats {
     grid-template-columns: 1fr;
   }
 
   .world-stage-frame.zoomed .world-dots {
-    transform: scale(9);
+    transform: scale(10);
   }
 }
