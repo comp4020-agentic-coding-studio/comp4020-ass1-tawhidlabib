@@ -30,6 +30,8 @@ const frameEl = document.querySelector<HTMLElement>('[data-field="frame"]')!;
 const globeCanvas = document.querySelector<HTMLCanvasElement>('[data-field="globe"]')!;
 const ctx = globeCanvas.getContext("2d")!;
 const skylineEl = document.querySelector<HTMLElement>('[data-testid="skyline"]')!;
+const skylinePhotoEl = document.querySelector<HTMLElement>('[data-field="skyline-photo"]')!;
+const photoCreditEl = document.querySelector<HTMLElement>('[data-field="photo-credit"]')!;
 const statDotsEl = document.querySelector<HTMLElement>('[data-field="stat-dots"]')!;
 const spinBtn = document.querySelector<HTMLButtonElement>('[data-testid="spin"]')!;
 const placeholderEl = document.querySelector<HTMLElement>('[data-field="placeholder"]')!;
@@ -162,23 +164,164 @@ const connectivityMeta = withMeta([
 
 const allStatMeta: StatMeta[] = [...healthMeta, ...needsMeta, ...economyMeta, ...connectivityMeta];
 
-// Fixed points hand-placed on the rooftops of the generative skyline art
-// (styles.css .skyline-silhouette's own clip-path) so each dot visibly sits on
-// a building rather than floating in empty sky -- same 11 spots for every
-// country, since the silhouette itself never changes.
+// Fixed points spread across the frame's middle band, same 11 spots for every
+// country. Unlike the old fixed illustration, the background photo now varies
+// per country, so these can no longer be "placed on a building" -- instead
+// they're staggered across y: 14%-64% (clear of the bottom title scrim/spin
+// button) with enough horizontal spread to leave room for each dot's
+// always-visible label above it.
 const hotspotPositions: Array<{ xPct: number; yPct: number }> = [
-  { xPct: 6.5, yPct: 58 },
-  { xPct: 16.5, yPct: 43 },
-  { xPct: 21.5, yPct: 61 },
-  { xPct: 27, yPct: 33 },
-  { xPct: 38.5, yPct: 48 },
-  { xPct: 44, yPct: 23 },
-  { xPct: 50, yPct: 53 },
-  { xPct: 56, yPct: 38 },
-  { xPct: 67, yPct: 28 },
-  { xPct: 79, yPct: 45 },
-  { xPct: 91, yPct: 51 },
+  { xPct: 8, yPct: 20 },
+  { xPct: 8, yPct: 50 },
+  { xPct: 22, yPct: 34 },
+  { xPct: 22, yPct: 62 },
+  { xPct: 37, yPct: 18 },
+  { xPct: 50, yPct: 44 },
+  { xPct: 50, yPct: 64 },
+  { xPct: 63, yPct: 22 },
+  { xPct: 78, yPct: 38 },
+  { xPct: 78, yPct: 60 },
+  { xPct: 92, yPct: 24 },
 ];
+
+// --- Capital-city photo (Wikipedia, keyless + CORS-open) --------------------
+//
+// No API key involved anywhere here -- action=query with origin=* is Wikimedia's
+// own keyless, CORS-enabled path, so nothing needs hiding behind a backend this
+// static site doesn't have. If no good match is found (or the request fails
+// for any reason -- offline, blocked, disambiguation), the generative skyline
+// underneath simply stays visible; this is purely additive.
+
+interface PhotoCredit {
+  name: string;
+  license: string;
+  sourceUrl: string;
+}
+
+interface CapitalPhoto {
+  url: string;
+  credit?: PhotoCredit;
+}
+
+interface WikiPageImagesResponse {
+  query?: {
+    pages?: Record<
+      string,
+      { pageimage?: string; thumbnail?: { source: string } }
+    >;
+  };
+}
+
+interface WikiImageInfoResponse {
+  query?: {
+    pages?: Record<
+      string,
+      {
+        imageinfo?: Array<{
+          url?: string;
+          descriptionurl?: string;
+          extmetadata?: {
+            Artist?: { value: string };
+            LicenseShortName?: { value: string };
+          };
+        }>;
+      }
+    >;
+  };
+}
+
+function wikipediaApiUrl(params: Record<string, string>): string {
+  const url = new URL("https://en.wikipedia.org/w/api.php");
+  url.search = new URLSearchParams({ format: "json", origin: "*", ...params }).toString();
+  return url.toString();
+}
+
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
+async function queryPageImage(title: string): Promise<{ thumbnailUrl: string; filename: string } | null> {
+  const res = await fetch(wikipediaApiUrl({ action: "query", titles: title, prop: "pageimages", pithumbsize: "1600" }));
+  if (!res.ok) return null;
+  const data = (await res.json()) as WikiPageImagesResponse;
+  const page = Object.values(data.query?.pages ?? {})[0];
+  const thumbnailUrl = page?.thumbnail?.source;
+  const filename = page?.pageimage;
+  if (!thumbnailUrl || !filename) return null;
+  return { thumbnailUrl, filename };
+}
+
+async function queryImageCredit(filename: string): Promise<PhotoCredit | undefined> {
+  try {
+    const res = await fetch(
+      wikipediaApiUrl({ action: "query", titles: `File:${filename}`, prop: "imageinfo", iiprop: "extmetadata|url" }),
+    );
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as WikiImageInfoResponse;
+    const info = Object.values(data.query?.pages ?? {})[0]?.imageinfo?.[0];
+    const artistHtml = info?.extmetadata?.Artist?.value;
+    const license = info?.extmetadata?.LicenseShortName?.value;
+    const sourceUrl = info?.descriptionurl ?? info?.url;
+    if (!artistHtml || !license || !sourceUrl) return undefined;
+    const name = stripHtmlTags(artistHtml);
+    if (!name) return undefined;
+    return { name, license, sourceUrl };
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchCapitalPhoto(capital: string, countryName: string): Promise<CapitalPhoto | null> {
+  const candidates = [capital, `${capital}, ${countryName}`];
+  for (const title of candidates) {
+    try {
+      const found = await queryPageImage(title);
+      if (found) return { url: found.thumbnailUrl, credit: await queryImageCredit(found.filename) };
+    } catch {
+      // network hiccup or bad match -- try the next candidate title
+    }
+  }
+  return null;
+}
+
+const photoCache = new Map<string, CapitalPhoto | null>();
+let currentPhotoToken = 0;
+
+function loadCapitalPhoto(country: Country): Promise<CapitalPhoto | null> {
+  const cached = photoCache.get(country.code);
+  if (cached !== undefined) return Promise.resolve(cached);
+  return fetchCapitalPhoto(country.capital, country.name).then((photo) => {
+    photoCache.set(country.code, photo);
+    return photo;
+  });
+}
+
+function resetPhotoLayer(): void {
+  skylinePhotoEl.classList.remove("visible");
+  skylinePhotoEl.style.backgroundImage = "";
+  photoCreditEl.hidden = true;
+  photoCreditEl.replaceChildren();
+}
+
+function applyPhoto(photo: CapitalPhoto | null): void {
+  if (!photo) return; // generative skyline underneath stays visible
+  const preload = new Image();
+  preload.onload = () => {
+    skylinePhotoEl.style.backgroundImage = `url("${photo.url}")`;
+    skylinePhotoEl.classList.add("visible");
+  };
+  preload.src = photo.url;
+
+  if (photo.credit) {
+    const link = document.createElement("a");
+    link.href = photo.credit.sourceUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = photo.credit.name;
+    photoCreditEl.replaceChildren("Photo: ", link, ` (${photo.credit.license}) · Wikimedia Commons`);
+    photoCreditEl.hidden = false;
+  }
+}
 
 function animateNumber(el: HTMLElement, target: number, format: (value: number) => string): void {
   const duration = 900;
@@ -293,13 +436,22 @@ function renderHotspots(country: Country): void {
     const meta = allStatMeta[i];
     const pos = hotspotPositions[i];
 
+    const label = document.createElement("span");
+    label.className = "stat-dot-label";
+    label.textContent = meta.label;
+
+    const mark = document.createElement("span");
+    mark.className = "stat-dot-mark";
+    mark.setAttribute("aria-hidden", "true");
+
     const dot = document.createElement("button");
     dot.type = "button";
     dot.className = "stat-dot";
     dot.style.left = `${pos.xPct}%`;
     dot.style.top = `${pos.yPct}%`;
     dot.setAttribute("aria-expanded", "false");
-    dot.setAttribute("aria-label", `${meta.label}: tap for the figure`);
+    dot.setAttribute("aria-description", "Tap for the figure");
+    dot.append(label, mark);
     dot.addEventListener("click", (event) => {
       event.stopPropagation();
       const alreadyOpen = openPopover?.dot === dot;
@@ -477,6 +629,13 @@ function beginSpin(country: Country): void {
   animating = true;
   spinBtn.disabled = true;
   closePopover();
+
+  resetPhotoLayer();
+  const photoToken = ++currentPhotoToken;
+  loadCapitalPhoto(country).then((photo) => {
+    if (photoToken !== currentPhotoToken) return; // superseded by a later spin
+    applyPhoto(photo);
+  });
 
   if (prefersReducedMotion) {
     cancelAnimationFrame(rafId);

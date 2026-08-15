@@ -104,9 +104,9 @@ h1 {
   }
 }
 
-/* Generative capital skyline -- one consistent stylised silhouette reused for
-   every country. No sourced photography, so no licensing/attribution surface
-   and uniform quality across all ~200 countries. */
+/* Generative capital skyline -- the automatic fallback whenever a real photo
+   (below) can't be found or fails to load, so the hero never shows a broken
+   or blank background. */
 
 .skyline {
   position: absolute;
@@ -173,9 +173,62 @@ h1 {
   );
 }
 
-/* Stat hotspot dots -- hand-placed on the skyline's own rooftops. Pointer
-   events are dropped while the skyline isn't the visible layer so a dot can't
-   be clicked through the zoomed-out globe. */
+/* Real capital-city photo, fetched live (see main.ts) -- sits on top of the
+   generative silhouette above and only fades in once a photo is confirmed
+   loaded, so the silhouette is what shows if no photo is found or the fetch
+   fails. A dedicated scrim (independent of .hero-overlay's title scrim)
+   tames arbitrary photo brightness/colour so the dots and their labels below
+   stay legible regardless of what the photo looks like. */
+
+.skyline-photo {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 600ms ease-in;
+}
+
+.skyline-photo.visible {
+  opacity: 1;
+}
+
+.skyline-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0%);
+  transition: background 600ms ease-in;
+  pointer-events: none;
+}
+
+.skyline-photo.visible + .skyline-scrim {
+  background: rgb(0 0 0 / 22%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skyline-photo,
+  .skyline-scrim {
+    transition: none;
+  }
+}
+
+.photo-credit {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  margin: 0;
+  font-size: 0.7rem;
+  color: rgb(255 255 255 / 85%);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+
+.photo-credit a {
+  color: inherit;
+}
+
+/* Stat hotspot dots -- spread across the frame (see hotspotPositions in
+   main.ts). Pointer events are dropped while the skyline isn't the visible
+   layer so a dot can't be clicked through the zoomed-out globe. */
 
 .stat-dots {
   position: absolute;
@@ -191,19 +244,10 @@ h1 {
   width: 1.1rem;
   height: 1.1rem;
   padding: 0;
-  background: var(--accent);
-  border: 2px solid rgb(255 255 255 / 90%);
-  border-radius: 50%;
   cursor: pointer;
+  background: none;
+  border: none;
   translate: -50% -50%;
-  box-shadow: 0 0 0 0 rgb(232 84 62 / 55%);
-  animation: stat-dot-pulse 2.2s ease-out infinite;
-}
-
-.stat-dot:hover,
-.stat-dot:focus-visible,
-.stat-dot[aria-expanded="true"] {
-  background: #fff;
 }
 
 .stat-dot:focus-visible {
@@ -211,22 +255,73 @@ h1 {
   outline-offset: 3px;
 }
 
+/* The visual circle -- a persistent dark outer ring (in addition to the white
+   border) keeps it legible over both light and dark photos, not just the one
+   fixed illustration this used to sit on. */
+
+.stat-dot-mark {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border: 2px solid rgb(255 255 255 / 90%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px rgb(0 0 0 / 45%),
+    0 0 0 0 rgb(232 84 62 / 0%);
+  animation: stat-dot-pulse 2.2s ease-out infinite;
+}
+
+.stat-dot:hover .stat-dot-mark,
+.stat-dot:focus-visible .stat-dot-mark,
+.stat-dot[aria-expanded="true"] .stat-dot-mark {
+  background: #fff;
+}
+
+/* Always-visible statistic name -- a solid dark pill regardless of the photo
+   underneath, positioned above the mark without affecting the button's own
+   left/top coordinate. */
+
+.stat-dot-label {
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  width: max-content;
+  max-width: 7rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
+  background: rgb(10 10 14 / 80%);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+  translate: -50% 0;
+}
+
 @keyframes stat-dot-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgb(232 84 62 / 55%);
+    box-shadow:
+      0 0 0 3px rgb(0 0 0 / 45%),
+      0 0 0 0 rgb(232 84 62 / 55%);
   }
 
   70% {
-    box-shadow: 0 0 0 12px rgb(232 84 62 / 0%);
+    box-shadow:
+      0 0 0 3px rgb(0 0 0 / 45%),
+      0 0 0 12px rgb(232 84 62 / 0%);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgb(232 84 62 / 0%);
+    box-shadow:
+      0 0 0 3px rgb(0 0 0 / 45%),
+      0 0 0 0 rgb(232 84 62 / 0%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stat-dot {
+  .stat-dot-mark {
     animation: none;
   }
 }
@@ -484,5 +579,10 @@ h1 {
 
   .stat-popover {
     width: min(18rem, calc(100% - 1rem));
+  }
+
+  .stat-dot-label {
+    max-width: 5rem;
+    font-size: 0.6rem;
   }
 }

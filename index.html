@@ -16,7 +16,10 @@
           <canvas class="globe" data-field="globe" aria-hidden="true"></canvas>
           <div class="skyline" data-testid="skyline" aria-hidden="true" hidden>
             <div class="skyline-silhouette" aria-hidden="true"></div>
+            <div class="skyline-photo" data-field="skyline-photo" aria-hidden="true"></div>
+            <div class="skyline-scrim" aria-hidden="true"></div>
             <div class="stat-dots" data-field="stat-dots"></div>
+            <p class="photo-credit" data-field="photo-credit" hidden></p>
           </div>
         </div>
 
@@ -45,7 +48,7 @@
             <p class="hero-capital" data-field="capital"></p>
             <p class="hero-country" data-field="country"></p>
             <p class="odds" data-field="odds"></p>
-            <p class="hero-hint">Tap a dot on the skyline to see a statistic.</p>
+            <p class="hero-hint">Tap a dot on the photo to see a statistic.</p>
           </div>
 
           <button type="button" class="spin" data-testid="spin">Spin</button>
@@ -75,8 +78,16 @@
           countries report on different schedules, not because any were
           cherry-picked. The globe's own spin is calculated too: it always
           turns forward to the exact longitude of the country you drew, never
-          a faked snap-to-position. Tap any dot on the skyline above to see a
+          a faked snap-to-position. Tap any dot on the photo above to see a
           stat's exact indicator and year.
+        </p>
+        <p>
+          <strong>The capital-city photo:</strong> fetched live, no secrets
+          there either — a keyless, CORS-open Wikipedia lookup for the
+          capital's own photo, tried first by its plain name and then paired
+          with its country if that's ambiguous. When no good match exists (or
+          the request fails), a generic illustrated skyline stands in instead,
+          so the page never shows a broken image.
         </p>
         <p data-field="methodology-detail"></p>
         <p>
