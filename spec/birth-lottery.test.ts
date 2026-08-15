@@ -6,9 +6,10 @@ import {
   annualBirths,
   oddsOf,
   pickCountry,
-  project,
+  projectGlobe,
   statRange,
   survivalProbability,
+  targetRotation,
   weightedAverage,
   type Country,
 } from "../lottery";
@@ -115,21 +116,55 @@ describe("weightedAverage", () => {
   });
 });
 
-describe("project", () => {
-  it("maps the centre of the map to (50%, 50%)", () => {
-    expect(project(0, 0)).toEqual({ xPct: 50, yPct: 50 });
+describe("projectGlobe", () => {
+  it("puts a point at rotation 0 dead centre, facing the viewer", () => {
+    const p = projectGlobe(0, 0, 0);
+    expect(p.xPct).toBeCloseTo(50, 10);
+    expect(p.yPct).toBeCloseTo(50, 10);
+    expect(p.depth).toBeCloseTo(1, 10);
   });
 
-  it("maps the north-west corner (antimeridian, north pole) to (0%, 0%)", () => {
-    expect(project(-180, 90)).toEqual({ xPct: 0, yPct: 0 });
+  it("puts the antipodal longitude on the far side, dead centre", () => {
+    const p = projectGlobe(180, 0, 0);
+    expect(p.xPct).toBeCloseTo(50, 10);
+    expect(p.depth).toBeCloseTo(-1, 10);
   });
 
-  it("maps the south-east corner (antimeridian, south pole) to (100%, 100%)", () => {
-    expect(project(180, -90)).toEqual({ xPct: 100, yPct: 100 });
+  it("puts a point 90 degrees around on the limb (the visible edge)", () => {
+    const p = projectGlobe(90, 0, 0);
+    expect(p.xPct).toBeCloseTo(100, 10);
+    expect(p.yPct).toBeCloseTo(50, 10);
+    expect(p.depth).toBeCloseTo(0, 10);
   });
 
-  it("clamps out-of-range coordinates instead of drawing off-canvas", () => {
-    expect(project(200, 100)).toEqual({ xPct: 100, yPct: 0 });
+  it("rotating the globe brings a point on the limb to face the viewer", () => {
+    const p = projectGlobe(90, 0, 90);
+    expect(p.xPct).toBeCloseTo(50, 10);
+    expect(p.depth).toBeCloseTo(1, 10);
+  });
+
+  it("moves latitude toward the pole regardless of rotation", () => {
+    const p = projectGlobe(0, 90, 123);
+    expect(p.yPct).toBeCloseTo(0, 10);
+  });
+});
+
+describe("targetRotation", () => {
+  it("returns a rotation that brings the given longitude front-and-centre", () => {
+    const rotation = targetRotation(0, 90, 0);
+    expect(projectGlobe(90, 0, rotation).depth).toBeCloseTo(1, 10);
+  });
+
+  it("always spins forward, never backwards", () => {
+    // Facing 350 deg, target 10 deg: the short way is -340, but a lottery
+    // spin should never look like it ran in reverse.
+    expect(targetRotation(350, 10, 0)).toBeGreaterThan(350);
+  });
+
+  it("adds the requested number of full extra turns for the visual spin", () => {
+    const withoutExtra = targetRotation(0, 45, 0);
+    const withExtra = targetRotation(0, 45, 3);
+    expect(withExtra - withoutExtra).toBe(3 * 360);
   });
 });
 

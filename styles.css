@@ -79,35 +79,29 @@ h1 {
   background: linear-gradient(180deg, #0e1b2b 0%, #16283d 100%);
 }
 
-/* Only the dot layer scales -- it is the thing being "zoomed into". The
+/* Only the globe layer scales -- it is the thing being "zoomed into". The
    skyline is a sibling at native size (below) so it isn't dragged along and
    blown up off-screen by the same transform. */
-.world-dots {
+.globe {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   transform-origin: var(--origin-x, 50%) var(--origin-y, 50%);
   transition:
     transform 900ms ease-in-out,
     opacity 300ms ease-in;
 }
 
-.world-stage-frame.zoomed .world-dots {
+.world-stage-frame.zoomed .globe {
   transform: scale(18);
   opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .world-dots {
+  .globe {
     transition: none;
   }
-}
-
-.world-dots-dot {
-  position: absolute;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: #f2c94c;
-  box-shadow: 0 0 6px rgb(242 201 76 / 60%);
 }
 
 /* Generative capital skyline -- one consistent stylised silhouette reused for
@@ -179,6 +173,64 @@ h1 {
   );
 }
 
+/* Stat hotspot dots -- hand-placed on the skyline's own rooftops. Pointer
+   events are dropped while the skyline isn't the visible layer so a dot can't
+   be clicked through the zoomed-out globe. */
+
+.stat-dots {
+  position: absolute;
+  inset: 0;
+}
+
+.world-stage-frame:not(.zoomed) .stat-dots {
+  pointer-events: none;
+}
+
+.stat-dot {
+  position: absolute;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  background: var(--accent);
+  border: 2px solid rgb(255 255 255 / 90%);
+  border-radius: 50%;
+  cursor: pointer;
+  translate: -50% -50%;
+  box-shadow: 0 0 0 0 rgb(232 84 62 / 55%);
+  animation: stat-dot-pulse 2.2s ease-out infinite;
+}
+
+.stat-dot:hover,
+.stat-dot:focus-visible,
+.stat-dot[aria-expanded="true"] {
+  background: #fff;
+}
+
+.stat-dot:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@keyframes stat-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(232 84 62 / 55%);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px rgb(232 84 62 / 0%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgb(232 84 62 / 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-dot {
+    animation: none;
+  }
+}
+
 /* Overlay: title, reveal copy, spin control, history -- all layered directly
    on top of the dot-map/skyline art, bottom-anchored behind a scrim so text
    stays legible over whichever background is showing. */
@@ -194,6 +246,11 @@ h1 {
   padding: 2rem;
   color: #fff;
   background: linear-gradient(to top, rgb(0 0 0 / 70%), transparent 55%);
+
+  /* The box covers the whole hero even though it's only visually opaque near
+     the bottom -- without this, it would silently intercept clicks meant for
+     the stat dots on the skyline underneath it. Its own controls opt back in. */
+  pointer-events: none;
 }
 
 .hero-overlay h1 {
@@ -251,6 +308,11 @@ h1 {
   outline-offset: 3px;
 }
 
+/* .hero-overlay is pointer-events: none (see above); opt this child back in. */
+.hero-overlay .spin {
+  pointer-events: auto;
+}
+
 .spin:hover:not(:disabled) {
   filter: brightness(1.08);
 }
@@ -267,6 +329,11 @@ h1 {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+/* .hero-overlay is pointer-events: none (see above); opt this child back in. */
+.hero-overlay .history {
+  pointer-events: auto;
 }
 
 .history-chip {
@@ -295,81 +362,61 @@ h1 {
   border-color: var(--accent);
 }
 
-/* Result panel */
+/* Stat popover -- opened by a hotspot dot, positioned in JS (main.ts) and
+   clamped to stay inside .hero at both viewports. */
 
-.result {
-  margin: 1.5rem 0;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.stats-group {
-  padding: 1rem;
+.stat-popover {
+  position: absolute;
+  z-index: 2;
+  width: min(20rem, calc(100% - 1.5rem));
+  padding: 1rem 1.1rem;
+  color: var(--ink);
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 35%);
 }
 
-.stats-group h2 {
-  margin-top: 0;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.stat-popover-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 1.1rem;
+  line-height: 1;
   color: #6b6b76;
-}
-
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem;
-}
-
-.stat-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.75rem 0.9rem;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
+  background: none;
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease;
 }
 
-.stat-card:hover {
-  border-color: var(--accent);
+.stat-popover-close:hover,
+.stat-popover-close:focus-visible {
+  color: var(--ink);
+  background: var(--paper);
 }
 
-.stat-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.stat-card[aria-expanded="true"] {
-  border-color: var(--accent);
-  box-shadow: 0 2px 10px rgb(0 0 0 / 8%);
-}
-
-.stat-card-label {
+.stat-popover-label {
+  margin: 0 1.4rem 0.3rem 0;
   font-size: 0.78rem;
+  font-weight: 600;
   color: #6b6b76;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.stat-card-value {
-  font-size: 1.35rem;
+.stat-popover-value {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
   font-weight: 800;
+}
+
+.stat-popover-detail {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #45454f;
 }
 
 .stat-bar-track {
@@ -404,15 +451,6 @@ h1 {
   }
 }
 
-.stat-card-detail {
-  display: block;
-  padding-top: 0.4rem;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  color: #45454f;
-  border-top: 1px solid var(--border);
-}
-
 /* Methodology -- always visible, never a buried tooltip */
 
 .methodology {
@@ -440,11 +478,11 @@ h1 {
     padding: 1.25rem;
   }
 
-  .stats {
-    grid-template-columns: 1fr;
+  .world-stage-frame.zoomed .globe {
+    transform: scale(10);
   }
 
-  .world-stage-frame.zoomed .world-dots {
-    transform: scale(10);
+  .stat-popover {
+    width: min(18rem, calc(100% - 1rem));
   }
 }

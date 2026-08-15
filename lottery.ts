@@ -35,9 +35,12 @@ export interface Odds {
   percentage: number;
 }
 
-export interface Projected {
+export interface GlobePoint {
   xPct: number;
   yPct: number;
+  /** Depth on the unit sphere: +1 dead-centre facing the viewer, 0 on the
+   * limb (the visible edge of the sphere), -1 dead-centre on the far side. */
+  depth: number;
 }
 
 /** Estimated live births/year: population x crude birth rate. Both are real,
@@ -84,16 +87,29 @@ export function survivalProbability(infantMortalityPer1000: number): number {
   return 1 - infantMortalityPer1000 / 1000;
 }
 
-/** Equirectangular projection: real (lon, lat) -> percentage position on a
- * plain rectangular canvas. No coastline art is drawn -- plotting every
- * country's real coordinates is what makes the dot-scatter read as a map. */
-export function project(lon: number, lat: number): Projected {
-  const xPct = ((lon + 180) / 360) * 100;
-  const yPct = ((90 - lat) / 180) * 100;
-  return {
-    xPct: Math.min(100, Math.max(0, xPct)),
-    yPct: Math.min(100, Math.max(0, yPct)),
-  };
+/** Orthographic projection of a real (lon, lat) onto a globe that has been
+ * rotated by rotationDeg around its polar axis -- no coastline art is drawn,
+ * plotting every country's real coordinates at its rotated position is what
+ * makes the dot-scatter read as a spinning world. */
+export function projectGlobe(lon: number, lat: number, rotationDeg: number): GlobePoint {
+  const phi = ((lon - rotationDeg) * Math.PI) / 180;
+  const theta = (lat * Math.PI) / 180;
+  const x = Math.cos(theta) * Math.sin(phi);
+  const y = Math.sin(theta);
+  const z = Math.cos(theta) * Math.cos(phi);
+  return { xPct: 50 + x * 50, yPct: 50 - y * 50, depth: z };
+}
+
+/** How far to keep spinning (always forward, never backwards) so that
+ * `lon` ends up front-and-centre -- i.e. so that
+ * `projectGlobe(lon, 0, targetRotation(...)).depth === 1`. `extraSpins` full
+ * turns are added purely for the visual flourish of a spin that doesn't just
+ * snap to its target. */
+export function targetRotation(currentRotation: number, lon: number, extraSpins = 3): number {
+  const currentFacing = ((currentRotation % 360) + 360) % 360;
+  const desiredFacing = ((lon % 360) + 360) % 360;
+  const delta = (((desiredFacing - currentFacing) % 360) + 360) % 360;
+  return currentRotation + extraSpins * 360 + delta;
 }
 
 export interface Range {
