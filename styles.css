@@ -1,16 +1,303 @@
-body {
-  margin: 0;
-  padding: 2rem;
-  font-family: system-ui, sans-serif;
-  line-height: 1.6;
-  color: #1a1a1a;
+:root {
+  color-scheme: light dark;
+
+  --ink: #12131a;
+  --paper: #f6f5f1;
+  --accent: #e8543e;
+  --panel: #fff;
+  --border: #d8d5cc;
 }
 
-main {
-  max-width: 40rem;
-  margin: 0 auto;
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 1rem 3rem;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.5;
 }
 
 a {
-  color: #0b5fff;
+  color: var(--accent);
+}
+
+header nav a {
+  display: inline-block;
+  padding: 1rem 0;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+main {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: 0.25rem;
+}
+
+.intro {
+  max-width: 42rem;
+  color: #45454f;
+}
+
+/* World stage */
+
+.world-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.world-stage-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #0e1b2b 0%, #16283d 100%);
+}
+
+/* Only the dot layer scales -- it is the thing being "zoomed into". The
+   skyline is a sibling at native size (below) so it isn't dragged along and
+   blown up off-screen by the same transform. */
+.world-dots {
+  position: absolute;
+  inset: 0;
+  transform-origin: var(--origin-x, 50%) var(--origin-y, 50%);
+  transition:
+    transform 900ms ease-in-out,
+    opacity 300ms ease-in;
+}
+
+.world-stage-frame.zoomed .world-dots {
+  transform: scale(14);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-dots {
+    transition: none;
+  }
+}
+
+.world-dots-dot {
+  position: absolute;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #f2c94c;
+  box-shadow: 0 0 6px rgb(242 201 76 / 60%);
+}
+
+/* Generative capital skyline -- one consistent stylised silhouette reused for
+   every country, labelled with the real capital + country name. No sourced
+   photography, so no licensing/attribution surface and uniform quality
+   across all ~200 countries. */
+
+.skyline {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 500ms ease-in 400ms;
+}
+
+.world-stage-frame.zoomed .skyline {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skyline {
+    transition: none;
+  }
+}
+
+.skyline-silhouette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, #ff9d6c 0%, #2c2a5e 55%, #16162e 100%),
+    repeating-linear-gradient(
+      90deg,
+      #05050a 0 3%,
+      transparent 3% 4%
+    );
+  clip-path: polygon(
+    0% 100%,
+    0% 70%,
+    4% 70%,
+    4% 55%,
+    9% 55%,
+    9% 62%,
+    14% 62%,
+    14% 40%,
+    19% 40%,
+    19% 58%,
+    24% 58%,
+    24% 30%,
+    30% 30%,
+    30% 65%,
+    36% 65%,
+    36% 45%,
+    41% 45%,
+    41% 20%,
+    47% 20%,
+    47% 50%,
+    53% 50%,
+    53% 35%,
+    59% 35%,
+    59% 60%,
+    64% 60%,
+    64% 25%,
+    70% 25%,
+    70% 55%,
+    76% 55%,
+    76% 42%,
+    82% 42%,
+    82% 65%,
+    88% 65%,
+    88% 48%,
+    94% 48%,
+    94% 68%,
+    100% 68%,
+    100% 100%
+  );
+}
+
+.skyline-label {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  translate: -50% 0;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
+}
+
+.skyline-capital {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.skyline-country {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.spin {
+  padding: 0.75rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.spin:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.spin:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Result panel */
+
+.result {
+  margin: 1.5rem 0;
+}
+
+.result-placeholder {
+  color: #6b6b76;
+  font-style: italic;
+}
+
+.odds {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stats-group {
+  padding: 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.stats-group h2 {
+  margin-top: 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b6b76;
+}
+
+.stats-group dl {
+  margin: 0;
+}
+
+.stats-group dt {
+  font-size: 0.85rem;
+  color: #45454f;
+  margin-top: 0.6rem;
+}
+
+.stats-group dt:first-child {
+  margin-top: 0;
+}
+
+.stats-group dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Methodology -- always visible, never a buried tooltip */
+
+.methodology {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: #33333d;
+}
+
+.methodology h2 {
+  font-size: 1rem;
+  margin-top: 0;
+}
+
+@media (width <= 480px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .world-stage-frame.zoomed .world-dots {
+    transform: scale(9);
+  }
 }

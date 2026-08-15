@@ -3,21 +3,89 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>COMP4020 prototype</title>
+    <title>The Birth Lottery — COMP4020 prototype</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <header>
-      <nav aria-label="Primary">
-        <a href="./">Home</a>
-      </nav>
+      <nav aria-label="Primary"><a href="./">The Birth Lottery</a></nav>
     </header>
     <main>
-      <h1>COMP4020 prototype</h1>
-      <p data-testid="intro">
-        Replace this with your prototype. This week's brief is on the course website;
-        <code>spec/README.md</code> explains how the checks in this repo relate to it.
+      <h1>The Birth Lottery</h1>
+      <p class="intro">
+        Every spin lands you in a real country, weighted by how many babies are
+        actually born there each year — so the odds match where humans are
+        really born, not where anyone would like to be. Hit spin.
       </p>
+
+      <section class="world-stage" aria-label="World, spin control">
+        <div class="world-stage-frame" data-field="frame">
+          <div class="world-dots" data-field="world-dots" aria-hidden="true"></div>
+          <div class="skyline" data-testid="skyline" hidden>
+            <div class="skyline-silhouette" aria-hidden="true"></div>
+            <div class="skyline-label">
+              <p class="skyline-capital" data-field="capital"></p>
+              <p class="skyline-country" data-field="country"></p>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="spin" data-testid="spin">Spin</button>
+      </section>
+
+      <section class="result" data-testid="result" aria-live="polite">
+        <p class="result-placeholder" data-field="placeholder">
+          No one's been born yet — hit spin to find out where.
+        </p>
+        <div class="result-content" data-field="content" hidden>
+          <p class="odds" data-field="odds"></p>
+
+          <div class="stats">
+            <div class="stats-group">
+              <h2>Survival &amp; health</h2>
+              <dl data-field="health"></dl>
+            </div>
+            <div class="stats-group">
+              <h2>Basic needs</h2>
+              <dl data-field="needs"></dl>
+            </div>
+            <div class="stats-group">
+              <h2>Economy &amp; work</h2>
+              <dl data-field="economy"></dl>
+            </div>
+            <div class="stats-group">
+              <h2>Connectivity</h2>
+              <dl data-field="connectivity"></dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="methodology" data-testid="methodology">
+        <h2>How these odds are calculated — no secrets</h2>
+        <p data-field="methodology-intro"></p>
+        <p>
+          <strong>The formula:</strong> a country's chance of being picked is
+          its estimated annual live births divided by the world's estimated
+          annual live births, where annual births = population × crude birth
+          rate ÷ 1,000. Every figure comes from the
+          <a href="https://data.worldbank.org/" rel="noopener">World Bank Open
+          Data</a>
+          API (CC BY‑4.0), and each one is shown with the year it was actually
+          reported for that country — figures land in different years because
+          countries report on different schedules, not because any were
+          cherry-picked.
+        </p>
+        <p data-field="methodology-detail"></p>
+        <p>
+          "Chance of surviving your first year", "childbirth risk", and "health
+          risks adults here face" are honest proxies built from infant
+          mortality, maternal mortality, and adult mortality data — not literal
+          measurements of any individual's parents. Countries without
+          population or birth-rate data are left out of the lottery pool
+          entirely rather than guessed at; a missing stat for an included
+          country is shown as "not reported", never invented.
+        </p>
+      </section>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>
