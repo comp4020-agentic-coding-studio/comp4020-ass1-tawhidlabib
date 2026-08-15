@@ -8,6 +8,7 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,
     "useDefineForClassFields": true,
