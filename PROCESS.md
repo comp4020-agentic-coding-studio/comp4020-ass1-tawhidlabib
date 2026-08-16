@@ -1,85 +1,57 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-A reading-guide to how the work came together --- a map to your process, not an
-essay about it. Markers read this file and follow its citations; they don't
-trawl the repo for evidence you didn't point at, so if a moment mattered, cite
-it.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-One paragraph: the thing, and the idea behind it.
+[One paragraph: what the Birth Lottery is, and the idea behind it.]
 
 ## The moments that mattered
 
-Three or four for an assignment; fewer is fine for a weekly prototype. Keep the
-list short so each moment has room to do all four jobs:
+### 1. Making the live capital-city photo survive its own failure modes
 
-1. **what happened** --- the problem, or the thing that went wrong
-2. **what you did instead of the obvious thing** --- the call you made, and why
-   it beat the obvious one
-3. **how you knew it was right** --- the check you ran, the viewport you looked
-   at, what you read before accepting the diff
-4. **the citation** --- a commit or commit range, a `CLAUDE.md` change, a check
-   that went from red to green, a prompt paired with the commit it produced
+[`e878e9c`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-tawhidlabib/commit/e878e9c)
 
-Jobs 2 and 3 are the ones the repo can't tell a reader on its own, so they're
-where the marks are. The strongest moments are the ones where a correction
-landed in the **harness** --- the standards and checks your work has to satisfy
---- rather than in a retry: a rule added to `CLAUDE.md`, a check wired up, an
-attempt thrown away. Retrying until it passes is the routine case, and changing
-what the work runs against is the skilled one.
+<!-- In the diff: `main.ts` — keyless CORS-open Wikipedia lookup, two-title
+     fallback for ambiguous capital names, `photoCache`, the `currentPhotoToken`
+     race guard, and the generative silhouette left underneath as the fallback. -->
 
-Cite each moment as a link whose text is the commit hash or range and whose
-target is this repo's commit or compare URL, so a reader clicks straight to the
-evidence:
+- [What happened — the problem, or the thing that went wrong.]
+- [What I did instead of the obvious thing, and why it beat the obvious one.]
+- [How I knew it was right — the check I ran, what told me it landed.]
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
+### 2. Dropping the header bar without weakening the accessibility invariants
 
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
+[`a5a740b`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-tawhidlabib/commit/a5a740b)
 
-> the prompt, verbatim
+<!-- In the diff: `index.html` — `<h1>` moved to the landing screen and the
+     in-game title demoted to `<h2>`; `<header>`/`<nav>` kept as a focus-only
+     skip link. The invariants held: exactly one `<h1>`, a `<nav>` landmark
+     (`spec/invariants.test.ts`). -->
 
-Screenshots are welcome where one carries the verification better than a
-sentence does. Commit the file to this repo and link it with a **relative**
-path, which is what makes it render on GitHub: `![alt text](docs/before.png)`.
-Images don't count towards the word count and don't replace the citation.
+- [What happened — the problem, or the thing that went wrong.]
+- [What I did instead of the obvious thing, and why it beat the obvious one.]
+- [How I knew it was right — the check I ran, what told me it landed.]
 
-### A worked moment, for shape
+### 3. Measuring dot-label overlap instead of eyeballing it
 
-Delete this section along with the rest of the boilerplate --- it's here to show
-the four jobs in one paragraph, not to be imitated in content.
+[`e878e9c...a5a740b`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-tawhidlabib/compare/e878e9c...a5a740b)
 
-> The date formatter kept coming back with `toLocaleDateString()` and no locale
-> argument, so the same build rendered differently on my machine and in CI. I'd
-> already re-prompted it twice, which fixed the line but not the habit, so the
-> third time I put the rule in `CLAUDE.md` instead
-> ([`3f9ac21`](https://github.com/YOUR-ORG/YOUR-REPO/commit/3f9ac21)) and added
-> a spec test that fails on a bare `toLocaleDateString`. That's what told me it
-> had actually taken: the test went red against the old code and green against
-> the new, and the next two features it wrote passed it without prompting
-> ([`3f9ac21...b7e0d14`](https://github.com/YOUR-ORG/YOUR-REPO/compare/3f9ac21...b7e0d14)).
+<!-- In the diff: the 11 `hotspotPositions` in `main.ts` re-laid out twice —
+     first a spread across the middle band, then the five-row layout that keeps
+     labels off the bottom-left hero copy — plus per-viewport `.stat-dots`
+     insets in `styles.css` for 1920x1080 and 390x844. -->
 
-## Before you ship
+- [What happened — the problem, or the thing that went wrong.]
+- [What I did instead of the obvious thing, and why it beat the obvious one.]
+- [How I knew it was right — the check I ran, what told me it landed.]
 
-`pnpm check:evidence` verifies your citations resolve to real commits, that the
-current reflection entry is in `reflections/`, and that your `CLAUDE.md` is
-there --- before a marker ever opens the file. It checks that your map is
-traceable, not that it is good: the marker judges whether your small,
-deliberately chosen set of moments shows real judgement and reflection. A green
-check is not a substitute for that curation.
+### 4. A canvas that measures zero while its screen is hidden
 
-Images are deliberately not checked, because whether one renders is visible the
-moment you look. Open this file on GitHub and look at it before you ship.
+[`a5a740b`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-tawhidlabib/commit/a5a740b)
+
+<!-- In the diff: `main.ts` — `sizeView()` returns early on a zero-sized rect
+     rather than sizing to 1x1, and a `ResizeObserver` re-sizes the canvas when
+     the hidden hero is revealed, which a `window` resize event never reports. -->
+
+- [What happened — the problem, or the thing that went wrong.]
+- [What I did instead of the obvious thing, and why it beat the obvious one.]
+- [How I knew it was right — the check I ran, what told me it landed.]
