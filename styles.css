@@ -6,27 +6,45 @@
   --accent: #e8543e;
   --panel: #fff;
   --border: #d8d5cc;
+
+  /* Motion. Defaults (`ease`, `linear`) read mechanical on long travels like
+     the globe zoom; these carry most of the distance early and settle. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* The two screens are toggled by the `hidden` attribute from main.ts, and both
+   carry layout of their own -- without this a `display` of any kind would win
+   over the UA's [hidden] rule and leave a "hidden" screen on top of the page. */
+[hidden] {
+  display: none !important;
+}
+
+/* Both screens are fixed to the viewport, so the page itself never scrolls or
+   overflows -- the whole experience is meant to fit whatever window it's in,
+   and anything long (the help dialog) scrolls inside its own box instead. */
 html,
 body {
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
-  padding: 0 0 3rem;
+  padding: 0;
   font-family:
     system-ui,
     -apple-system,
     "Segoe UI",
     sans-serif;
   color: var(--ink);
-  background: var(--paper);
+  background: #060b12;
   line-height: 1.5;
 }
 
@@ -34,41 +52,246 @@ a {
   color: var(--accent);
 }
 
-header nav {
-  padding: 0 1rem;
-}
-
-header nav a {
-  display: inline-block;
-  padding: 1rem 0;
+/* Navigation landmark without a navigation bar: off-screen until focused, so
+   the artwork owns the top of the page but the landmark is still there and
+   still reachable by keyboard. */
+.brand-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 60;
+  padding: 0.5rem 0.9rem;
   font-weight: 700;
   color: var(--ink);
   text-decoration: none;
+  background: var(--paper);
+  border-radius: 0.5rem;
+  transform: translateY(-250%);
+  transition: transform 180ms var(--ease-out-quart);
 }
 
-main {
-  max-width: 56rem;
-  margin: 0 auto;
-  padding: 0 1rem;
+.brand-link:focus {
+  transform: none;
+}
+
+.brand-link:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-link {
+    transition: none;
+  }
 }
 
 h1 {
   margin: 0 0 0.25rem;
 }
 
-/* Hero: the whole spin/reveal moment, full-bleed regardless of <main>'s
-   max-width. overflow-x: hidden on html/body (above) guards against the
-   100vw trick introducing a horizontal scrollbar. */
+/* Landing: the first thing on every load. A full-viewport ambient globe with
+   the pitch over the top, handing off to the hero when Start is pressed. */
+
+.landing {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+
+  /* Top padding keeps the centred copy clear of the fixed "?" button at every
+     size, including short landscape windows where the two would otherwise meet. */
+  padding: 4.5rem 1.25rem 1.5rem;
+  overflow: hidden;
+  background: radial-gradient(125% 100% at 50% 38%, #17293e 0%, #0a1420 62%, #050a11 100%);
+}
+
+.landing-globe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition:
+    transform 900ms var(--ease-in-quart),
+    opacity 700ms ease-in;
+}
+
+/* Reading text straight off a rotating globe is the one thing this layout
+   can't ask of anyone -- the copy sits in its own pool of shade. */
+.landing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    62% 54% at 50% 50%,
+    rgb(5 9 16 / 78%) 0%,
+    rgb(5 9 16 / 55%) 55%,
+    rgb(5 9 16 / 0%) 100%
+  );
+  pointer-events: none;
+}
+
+.landing-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 34rem;
+  max-height: 100%;
+  overflow-y: auto;
+  color: #fff;
+  text-align: center;
+}
+
+.landing-inner h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2.1rem, 7vw, 4rem);
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 65%);
+}
+
+.landing-lede {
+  margin: 0 0 0.75rem;
+  font-size: clamp(0.9rem, 1.6vw, 1.05rem);
+  color: rgb(255 255 255 / 88%);
+  text-shadow: 0 1px 8px rgb(0 0 0 / 75%);
+}
+
+.landing-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: rgb(255 255 255 / 75%);
+}
+
+.landing-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 60%);
+}
+
+.start {
+  margin-top: 1.25rem;
+  padding: 0.95rem 3rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  box-shadow:
+    0 10px 30px rgb(232 84 62 / 40%),
+    0 1px 0 rgb(255 255 255 / 25%) inset;
+  cursor: pointer;
+  transition:
+    transform 200ms var(--ease-out-back),
+    box-shadow 200ms ease-out,
+    filter 200ms ease-out;
+}
+
+.start:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 36px rgb(232 84 62 / 50%),
+    0 1px 0 rgb(255 255 255 / 25%) inset;
+  filter: brightness(1.08);
+}
+
+.start:active {
+  transform: translateY(1px) scale(0.98);
+  transition-duration: 80ms;
+}
+
+.start:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Entrance, and the handoff to the hero. The landing globe swells and fades
+   while the hero fades up underneath it, so the two full-screen globes read as
+   one camera push rather than a cut between screens. */
+
+.landing-inner > * {
+  animation: landing-in 700ms var(--ease-out-expo) backwards;
+}
+
+.landing-inner > :nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.landing-inner > :nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.landing-inner > :nth-child(4) {
+  animation-delay: 240ms;
+}
+
+.landing-inner > :nth-child(5),
+.landing-inner > :nth-child(6) {
+  animation-delay: 320ms;
+}
+
+@keyframes landing-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.9rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.landing.leaving {
+  pointer-events: none;
+}
+
+.landing.leaving .landing-globe {
+  transform: scale(1.6);
+  opacity: 0;
+}
+
+.landing.leaving .landing-inner,
+.landing.leaving::after {
+  opacity: 0;
+  transition: opacity 320ms ease-in;
+}
+
+.hero.entering {
+  animation: hero-screen-in 760ms ease-out backwards;
+}
+
+@keyframes hero-screen-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-inner > *,
+  .hero.entering {
+    animation: none;
+  }
+
+  .landing-globe,
+  .landing.leaving .landing-inner,
+  .landing.leaving::after {
+    transition: none;
+  }
+}
+
+/* Hero: the whole spin/reveal moment, holding the full viewport once Start
+   hands over to it. */
 
 .hero {
-  position: relative;
-  left: 50%;
-  width: 100vw;
-  height: min(88vh, 850px);
-  min-height: 30rem;
-  margin-bottom: 2rem;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
   overflow: hidden;
-  transform: translateX(-50%);
   background: #0e1b2b;
 }
 
@@ -81,7 +304,12 @@ h1 {
 
 /* Only the globe layer scales -- it is the thing being "zoomed into". The
    skyline is a sibling at native size (below) so it isn't dragged along and
-   blown up off-screen by the same transform. */
+   blown up off-screen by the same transform.
+
+   The timing is asymmetric on purpose: a transition declared on the base state
+   governs the way back, so the dive into the country is a slow-then-fast plunge
+   while the pull-back out of it is short -- that return is dead time before the
+   next spin (main.ts waits on this very transform to end before launching). */
 .globe {
   position: absolute;
   inset: 0;
@@ -89,13 +317,16 @@ h1 {
   height: 100%;
   transform-origin: var(--origin-x, 50%) var(--origin-y, 50%);
   transition:
-    transform 900ms ease-in-out,
-    opacity 300ms ease-in;
+    transform 620ms var(--ease-out-quart),
+    opacity 320ms ease-out;
 }
 
 .world-stage-frame.zoomed .globe {
   transform: scale(18);
   opacity: 0;
+  transition:
+    transform 1050ms var(--ease-in-quart),
+    opacity 460ms ease-in 340ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -108,19 +339,26 @@ h1 {
    (below) can't be found or fails to load, so the hero never shows a broken
    or blank background. */
 
+/* Settles from slightly overscaled as it fades up, so the arrival reads as the
+   camera coming to rest rather than a layer being switched on. */
 .skyline {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 500ms ease-in 400ms;
+  transform: scale(1.05);
+  transition:
+    opacity 520ms ease-out 360ms,
+    transform 1400ms var(--ease-out-expo) 360ms;
 }
 
 .world-stage-frame.zoomed .skyline {
   opacity: 1;
+  transform: scale(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .skyline {
+    transform: none;
     transition: none;
   }
 }
@@ -186,28 +424,41 @@ h1 {
   background-position: center;
   background-size: cover;
   opacity: 0;
-  transition: opacity 600ms ease-in;
+  transform: scale(1.04);
+  transition:
+    opacity 900ms ease-out,
+    transform 1800ms var(--ease-out-expo);
 }
 
 .skyline-photo.visible {
   opacity: 1;
+  transform: scale(1);
 }
 
+/* Vignette as well as a flat wash: the corners are where the dot labels sit,
+   and an even 22% does less for them than a graded one does. */
 .skyline-scrim {
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / 0%);
-  transition: background 600ms ease-in;
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgb(0 0 0 / 0%) 40%, rgb(0 0 0 / 38%) 100%),
+    rgb(0 0 0 / 0%);
+  opacity: 0;
+  transition: opacity 900ms ease-out;
   pointer-events: none;
 }
 
 .skyline-photo.visible + .skyline-scrim {
-  background: rgb(0 0 0 / 22%);
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgb(0 0 0 / 0%) 40%, rgb(0 0 0 / 38%) 100%),
+    rgb(0 0 0 / 20%);
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .skyline-photo,
   .skyline-scrim {
+    transform: none;
     transition: none;
   }
 }
@@ -230,9 +481,12 @@ h1 {
    main.ts). Pointer events are dropped while the skyline isn't the visible
    layer so a dot can't be clicked through the zoomed-out globe. */
 
+/* Inset rather than inset: 0 -- the dots are placed as percentages of this box,
+   so insetting it is what keeps every label clear of the frame edges (labels
+   are wider than their dot) and, on phones, clear of the hero copy below. */
 .stat-dots {
   position: absolute;
-  inset: 0;
+  inset: 7% 3% 8%;
 }
 
 .world-stage-frame:not(.zoomed) .stat-dots {
@@ -253,6 +507,26 @@ h1 {
 .stat-dot:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
+  border-radius: 50%;
+}
+
+/* Dealt out left-to-right as the skyline settles, so eleven dots arriving at
+   once doesn't read as a rash appearing on the photo. */
+.world-stage-frame.zoomed .stat-dot {
+  animation: stat-dot-in 460ms var(--ease-out-back) backwards;
+  animation-delay: calc(680ms + var(--i, 0) * 55ms);
+}
+
+@keyframes stat-dot-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* The visual circle -- a persistent dark outer ring (in addition to the white
@@ -265,16 +539,39 @@ h1 {
   background: var(--accent);
   border: 2px solid rgb(255 255 255 / 90%);
   border-radius: 50%;
-  box-shadow:
-    0 0 0 3px rgb(0 0 0 / 45%),
-    0 0 0 0 rgb(232 84 62 / 0%);
-  animation: stat-dot-pulse 2.2s ease-out infinite;
+  box-shadow: 0 0 0 3px rgb(0 0 0 / 45%);
+  transition:
+    background 180ms ease-out,
+    transform 220ms var(--ease-out-back);
+}
+
+/* The halo is a scaled pseudo-element, not an animated box-shadow spread:
+   transform/opacity are composited, a growing spread repaints every frame. */
+.stat-dot-mark::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid rgb(232 84 62 / 70%);
+  border-radius: 50%;
+  animation: stat-dot-pulse 2.4s var(--ease-out-quart) infinite;
 }
 
 .stat-dot:hover .stat-dot-mark,
 .stat-dot:focus-visible .stat-dot-mark,
 .stat-dot[aria-expanded="true"] .stat-dot-mark {
   background: #fff;
+  transform: scale(1.3);
+}
+
+.stat-dot:active .stat-dot-mark {
+  transform: scale(1.1);
+  transition-duration: 90ms;
+}
+
+/* Once it's open the dot is the thing you're reading, not an invitation. */
+.stat-dot[aria-expanded="true"] .stat-dot-mark::after {
+  animation: none;
+  opacity: 0;
 }
 
 /* Always-visible statistic name -- a solid dark pill regardless of the photo
@@ -283,45 +580,63 @@ h1 {
 
 .stat-dot-label {
   position: absolute;
-  bottom: calc(100% + 0.4rem);
+  bottom: calc(100% + 0.45rem);
   left: 50%;
   width: max-content;
-  max-width: 7rem;
-  padding: 0.15rem 0.5rem;
+
+  /* The viewport term is what keeps the outermost dots' labels inside the
+     frame: a label is centred on its dot, so at 320px a fixed rem cap is wider
+     than the margin the dot has left to the edge. */
+  max-width: min(7rem, 26vw);
+  padding: 0.2rem 0.55rem;
   font-size: 0.65rem;
   font-weight: 700;
   line-height: 1.25;
   color: #fff;
   text-align: center;
   text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
-  background: rgb(10 10 14 / 80%);
+  background: rgb(10 10 14 / 78%);
+  border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 0.5rem;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 35%);
+  backdrop-filter: blur(6px);
+  transition:
+    background 180ms ease-out,
+    border-color 180ms ease-out;
   translate: -50% 0;
+}
+
+.stat-dot:hover .stat-dot-label,
+.stat-dot:focus-visible .stat-dot-label,
+.stat-dot[aria-expanded="true"] .stat-dot-label {
+  background: rgb(232 84 62 / 92%);
+  border-color: rgb(255 255 255 / 45%);
 }
 
 @keyframes stat-dot-pulse {
   0% {
-    box-shadow:
-      0 0 0 3px rgb(0 0 0 / 45%),
-      0 0 0 0 rgb(232 84 62 / 55%);
+    opacity: 0.85;
+    transform: scale(1);
   }
 
   70% {
-    box-shadow:
-      0 0 0 3px rgb(0 0 0 / 45%),
-      0 0 0 12px rgb(232 84 62 / 0%);
+    opacity: 0;
+    transform: scale(2.6);
   }
 
   100% {
-    box-shadow:
-      0 0 0 3px rgb(0 0 0 / 45%),
-      0 0 0 0 rgb(232 84 62 / 0%);
+    opacity: 0;
+    transform: scale(2.6);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stat-dot-mark {
+  .stat-dot-mark::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .world-stage-frame.zoomed .stat-dot {
     animation: none;
   }
 }
@@ -348,8 +663,15 @@ h1 {
   pointer-events: none;
 }
 
-.hero-overlay h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
+/* Branding once the landing has already made the introduction: an eyebrow, not
+   a headline, so the drawn country is what the copy block leads with. */
+.hero-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgb(255 255 255 / 70%);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   text-shadow: 0 1px 6px rgb(0 0 0 / 50%);
 }
 
@@ -367,6 +689,7 @@ h1 {
   margin: 0;
   font-size: clamp(1.4rem, 4vw, 2.1rem);
   font-weight: 800;
+  letter-spacing: -0.02em;
   text-shadow: 0 1px 6px rgb(0 0 0 / 50%);
 }
 
@@ -377,8 +700,54 @@ h1 {
 
 .odds {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 45%);
+}
+
+/* Was unstyled, so it carried a default 1em block margin and pushed the
+   controls down harder than anything else in the stack. */
+.hero-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.9rem;
+  color: rgb(255 255 255 / 80%);
+}
+
+/* Keyed to .zoomed, which main.ts removes and re-adds per spin, so the copy
+   re-enters on every draw with no JS to restart it. */
+.world-stage-frame.zoomed ~ .hero-overlay .hero-capital,
+.world-stage-frame.zoomed ~ .hero-overlay .hero-country,
+.world-stage-frame.zoomed ~ .hero-overlay .odds,
+.world-stage-frame.zoomed ~ .hero-overlay .hero-hint {
+  animation: hero-copy-in 620ms var(--ease-out-expo) backwards;
+}
+
+.world-stage-frame.zoomed ~ .hero-overlay .hero-capital {
+  animation-delay: 500ms;
+}
+
+.world-stage-frame.zoomed ~ .hero-overlay .hero-country {
+  animation-delay: 575ms;
+}
+
+.world-stage-frame.zoomed ~ .hero-overlay .odds {
+  animation-delay: 650ms;
+}
+
+.world-stage-frame.zoomed ~ .hero-overlay .hero-hint {
+  animation-delay: 725ms;
+}
+
+@keyframes hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .spin {
@@ -390,12 +759,28 @@ h1 {
   background: var(--accent);
   border: none;
   border-radius: 999px;
+  box-shadow:
+    0 6px 18px rgb(232 84 62 / 35%),
+    0 1px 0 rgb(255 255 255 / 25%) inset;
   cursor: pointer;
+  transition:
+    transform 200ms var(--ease-out-back),
+    box-shadow 200ms ease-out,
+    filter 200ms ease-out,
+    opacity 200ms ease-out;
 }
 
 .spin:disabled {
-  opacity: 0.6;
+  opacity: 0.65;
+  box-shadow: none;
   cursor: wait;
+  animation: spin-waiting 1.4s ease-in-out infinite;
+}
+
+@keyframes spin-waiting {
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .spin:focus-visible {
@@ -409,7 +794,17 @@ h1 {
 }
 
 .spin:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 26px rgb(232 84 62 / 45%),
+    0 1px 0 rgb(255 255 255 / 25%) inset;
   filter: brightness(1.08);
+}
+
+.spin:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 3px 10px rgb(232 84 62 / 35%);
+  transition-duration: 80ms;
 }
 
 .spin-hint {
@@ -437,14 +832,40 @@ h1 {
   font-size: 0.85rem;
   font-weight: 600;
   color: #fff;
+  letter-spacing: 0.02em;
   background: rgb(255 255 255 / 12%);
   border: 1px solid rgb(255 255 255 / 40%);
   border-radius: 999px;
   cursor: pointer;
+  backdrop-filter: blur(6px);
+  animation: chip-in 320ms var(--ease-out-back) backwards;
+  transition:
+    background 180ms ease-out,
+    border-color 180ms ease-out,
+    transform 180ms var(--ease-out-back);
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .history-chip:hover {
-  background: rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 24%);
+  border-color: rgb(255 255 255 / 65%);
+  transform: translateY(-2px);
+}
+
+.history-chip:active {
+  transform: translateY(0) scale(0.95);
+  transition-duration: 80ms;
 }
 
 .history-chip:focus-visible {
@@ -454,12 +875,19 @@ h1 {
 
 .history-chip-current {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: rgb(255 255 255 / 55%);
+  box-shadow: 0 4px 14px rgb(232 84 62 / 40%);
+}
+
+.history-chip-current:hover {
+  background: var(--accent);
 }
 
 /* Stat popover -- opened by a hotspot dot, positioned in JS (main.ts) and
    clamped to stay inside .hero at both viewports. */
 
+/* Grows from the dot it belongs to instead of snapping in. main.ts places it
+   while it's still scaled down, then adds .open on the next frame. */
 .stat-popover {
   position: absolute;
   z-index: 2;
@@ -467,8 +895,21 @@ h1 {
   padding: 1rem 1.1rem;
   color: var(--ink);
   background: var(--panel);
-  border-radius: 0.75rem;
-  box-shadow: 0 8px 30px rgb(0 0 0 / 35%);
+  border-radius: 0.85rem;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 20%),
+    0 12px 34px rgb(0 0 0 / 35%);
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 160ms ease-out,
+    transform 260ms var(--ease-out-back);
+}
+
+.stat-popover.open {
+  opacity: 1;
+  transform: none;
 }
 
 .stat-popover-close {
@@ -484,12 +925,22 @@ h1 {
   border: none;
   border-radius: 50%;
   cursor: pointer;
+  transition:
+    color 150ms ease-out,
+    background 150ms ease-out,
+    transform 150ms var(--ease-out-back);
 }
 
 .stat-popover-close:hover,
 .stat-popover-close:focus-visible {
   color: var(--ink);
   background: var(--paper);
+  transform: rotate(90deg);
+}
+
+.stat-popover-close:active {
+  transform: rotate(90deg) scale(0.88);
+  transition-duration: 80ms;
 }
 
 .stat-popover-label {
@@ -526,9 +977,9 @@ h1 {
   inset: 0;
   transform: scaleX(0);
   transform-origin: left center;
-  background: var(--accent);
+  background: linear-gradient(90deg, #f0714f, var(--accent));
   border-radius: 999px;
-  transition: transform 700ms ease-out;
+  transition: transform 950ms var(--ease-out-expo) 140ms;
 }
 
 .stat-bar-avg-marker {
@@ -537,40 +988,201 @@ h1 {
   bottom: -3px;
   width: 2px;
   background: var(--ink);
+  border-radius: 1px;
   opacity: 0.55;
+  animation: marker-in 400ms ease-out 520ms backwards;
+}
+
+@keyframes marker-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 0.55;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stat-bar-fill {
     transition: none;
   }
+
+  .stat-bar-avg-marker {
+    animation: none;
+  }
 }
 
-/* Methodology -- always visible, never a buried tooltip */
+/* "?" -- the one control that outlives every screen change, so the working
+   behind the odds is never more than a click away from wherever you are. */
+
+.help-toggle {
+  position: fixed;
+  top: max(0.9rem, env(safe-area-inset-top));
+  right: max(0.9rem, env(safe-area-inset-right));
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  font-family: inherit;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: rgb(12 18 28 / 62%);
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 35%);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition:
+    background 180ms ease-out,
+    border-color 180ms ease-out,
+    transform 200ms var(--ease-out-back);
+}
+
+.help-toggle:hover {
+  background: var(--accent);
+  border-color: rgb(255 255 255 / 70%);
+  transform: scale(1.08);
+}
+
+.help-toggle:active {
+  transform: scale(0.94);
+  transition-duration: 80ms;
+}
+
+.help-toggle:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.help-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(5 9 16 / 68%);
+  opacity: 0;
+  backdrop-filter: blur(4px);
+  transition: opacity 200ms ease-out;
+}
+
+.help-backdrop.open {
+  opacity: 1;
+}
+
+/* Never taller than the window: the dialog scrolls inside itself rather than
+   pushing the page into a scroll it isn't supposed to have. */
+.help-dialog {
+  position: relative;
+  width: min(46rem, 100%);
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  padding: 1.5rem 1.6rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--panel);
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 45%);
+  transform: translateY(10px) scale(0.97);
+  transition: transform 280ms var(--ease-out-back);
+}
+
+.help-dialog:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.help-backdrop.open .help-dialog {
+  transform: none;
+}
+
+.help-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #6b6b76;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    color 150ms ease-out,
+    background 150ms ease-out,
+    transform 150ms var(--ease-out-back);
+}
+
+.help-close:hover,
+.help-close:focus-visible {
+  color: var(--ink);
+  background: var(--paper);
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-toggle,
+  .help-close,
+  .help-backdrop,
+  .help-dialog {
+    transition: none;
+  }
+
+  .help-toggle:hover,
+  .help-toggle:active,
+  .help-close:hover,
+  .help-close:focus-visible {
+    transform: none;
+  }
+
+  .help-dialog {
+    transform: none;
+  }
+}
+
+/* Methodology -- moved into the dialog above, still the whole of it */
 
 .methodology {
-  margin-top: 2rem;
-  padding: 1rem 1.25rem;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
   font-size: 0.9rem;
+  line-height: 1.6;
   color: #33333d;
 }
 
 .methodology h2 {
-  font-size: 1rem;
   margin-top: 0;
+  margin-right: 2rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.methodology p {
+  max-width: 46rem;
+  overflow-wrap: anywhere;
+}
+
+.methodology p:last-child {
+  margin-bottom: 0;
 }
 
 @media (width <= 480px) {
-  .hero {
-    height: 75vh;
-    min-height: 26rem;
+  .hero-overlay {
+    gap: 0.35rem;
+    padding: 1.25rem;
   }
 
-  .hero-overlay {
-    padding: 1.25rem;
+  /* The copy runs the full width here, so the dot field can't share the lower
+     half with it -- it gets the band above instead. */
+  .stat-dots {
+    inset: 7% 8% 53%;
   }
 
   .world-stage-frame.zoomed .globe {
@@ -582,7 +1194,172 @@ h1 {
   }
 
   .stat-dot-label {
-    max-width: 5rem;
-    font-size: 0.6rem;
+    max-width: min(6rem, 26vw);
+    padding: 0.15rem 0.4rem;
+    font-size: 0.55rem;
+    line-height: 1.2;
+    border-radius: 0.4rem;
+  }
+
+  /* Trimmed so the copy block leaves the dot field its band. */
+  .hero-overlay h1 {
+    font-size: 1.7rem;
+  }
+
+  .hero-capital {
+    font-size: 1.3rem;
+  }
+
+  .odds {
+    font-size: 0.9rem;
+  }
+
+  .hero-hint {
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+  }
+
+  .spin {
+    padding: 0.7rem 1.9rem;
+    font-size: 1rem;
+  }
+
+  .spin-hint {
+    font-size: 0.75rem;
+  }
+
+  .history {
+    margin-top: 0.5rem;
+  }
+
+  .landing {
+    padding: 4rem 1rem 1rem;
+  }
+
+  .start {
+    padding: 0.8rem 2.4rem;
+    font-size: 1.05rem;
+  }
+
+  .help-dialog {
+    padding: 1.25rem 1.1rem;
+  }
+
+  /* Keeps the credit in the right-hand column, clear of the history chips
+     sitting in the same bottom strip on the left. */
+  .photo-credit {
+    max-width: 58%;
+    text-align: right;
+  }
+}
+
+/* Short windows -- a landscape phone, or a desktop window dragged down to a
+   letterbox. The bottom-anchored copy is what runs out of room first, so it
+   loses its optional lines before the controls lose theirs. */
+
+@media (height <= 560px) {
+  .landing {
+    padding: 3.25rem 1rem 1rem;
+  }
+
+  .landing-inner h1 {
+    margin-bottom: 0.4rem;
+    font-size: clamp(1.5rem, 5vh, 2.2rem);
+  }
+
+  .landing-lede {
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .landing-note,
+  .landing-hint {
+    display: none;
+  }
+
+  .start {
+    margin-top: 0.75rem;
+    padding: 0.65rem 2.2rem;
+    font-size: 1rem;
+  }
+
+  .hero-overlay {
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .hero-placeholder,
+  .spin-hint,
+  .hero-hint {
+    display: none;
+  }
+
+  .hero-capital {
+    font-size: 1.2rem;
+  }
+
+  .odds {
+    font-size: 0.85rem;
+  }
+
+  .spin {
+    padding: 0.55rem 1.6rem;
+    font-size: 0.95rem;
+  }
+
+  /* The dot field keeps the upper band to itself, clear of the copy below. */
+  .stat-dots {
+    inset: 10% 5% 46%;
+  }
+
+  .stat-dot-label {
+    max-width: min(5.5rem, 26vw);
+    padding: 0.1rem 0.35rem;
+    font-size: 0.52rem;
+  }
+}
+
+/* Everything added for polish that moves, switched off in one place. Colour
+   and depth changes stay -- only motion is opted out of. */
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-popover {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .spin,
+  .start,
+  .history-chip,
+  .stat-dot-mark,
+  .stat-popover-close {
+    transition: none;
+  }
+
+  .spin:disabled,
+  .history-chip {
+    animation: none;
+  }
+
+  .start:hover,
+  .start:active,
+  .spin:hover:not(:disabled),
+  .spin:active:not(:disabled),
+  .history-chip:hover,
+  .history-chip:active,
+  .stat-dot:hover .stat-dot-mark,
+  .stat-dot:focus-visible .stat-dot-mark,
+  .stat-dot[aria-expanded="true"] .stat-dot-mark,
+  .stat-popover-close:hover,
+  .stat-popover-close:focus-visible {
+    transform: none;
+  }
+
+  .world-stage-frame.zoomed ~ .hero-overlay .hero-capital,
+  .world-stage-frame.zoomed ~ .hero-overlay .hero-country,
+  .world-stage-frame.zoomed ~ .hero-overlay .odds,
+  .world-stage-frame.zoomed ~ .hero-overlay .hero-hint {
+    animation: none;
   }
 }

@@ -7,11 +7,48 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <!-- Branding is the landing screen's own <h1>; this is kept purely as the
+         navigation landmark, shown only when it takes keyboard focus so it
+         never renders as a bar across the top of the artwork. -->
     <header>
-      <nav aria-label="Primary"><a href="./">The Birth Lottery</a></nav>
+      <nav aria-label="Primary"><a class="brand-link" href="./">The Birth Lottery</a></nav>
     </header>
     <main>
-      <section class="hero" aria-labelledby="hero-heading">
+      <section
+        class="landing"
+        data-testid="landing"
+        data-field="landing"
+        aria-labelledby="landing-heading"
+      >
+        <canvas class="landing-globe" data-field="landing-globe" aria-hidden="true"></canvas>
+
+        <div class="landing-inner">
+          <h1 id="landing-heading">The Birth Lottery</h1>
+
+          <p class="landing-lede">
+            Every spin lands you in a real country, weighted by how many babies
+            are actually born there each year — each country's population times
+            its crude birth rate, from World Bank figures. The odds match where
+            humans are really born, not where anyone would like to be.
+          </p>
+
+          <p class="landing-lede">
+            Spin, and the globe turns to the country you drew, dives into its
+            capital, and hands you eleven real statistics about the life that
+            draw implies.
+          </p>
+
+          <button type="button" class="start" data-testid="start">Start</button>
+          <p class="landing-hint">or press space</p>
+
+          <p class="landing-note">
+            A model of the odds of being born somewhere — never a claim about
+            any particular person.
+          </p>
+        </div>
+      </section>
+
+      <section class="hero" data-field="hero" aria-labelledby="hero-heading" hidden>
         <div class="world-stage-frame" data-field="frame">
           <canvas class="globe" data-field="globe" aria-hidden="true"></canvas>
           <div class="skyline" data-testid="skyline" aria-hidden="true" hidden>
@@ -36,12 +73,11 @@
         </div>
 
         <div class="hero-overlay">
-          <h1 id="hero-heading">The Birth Lottery</h1>
+          <h2 id="hero-heading" class="hero-title">The Birth Lottery</h2>
 
           <p class="hero-placeholder" data-field="placeholder">
-            Every spin lands you in a real country, weighted by how many
-            babies are actually born there each year — so the odds match
-            where humans are really born, not where anyone would like to be.
+            Spin the globe to see where the lottery lands you — the odds are
+            weighted by how many babies are really born in each country.
           </p>
 
           <div class="hero-content" data-field="content" aria-live="polite" hidden>
@@ -63,46 +99,86 @@
         </div>
       </section>
 
-      <section class="methodology" data-testid="methodology">
-        <h2>How these odds are calculated — no secrets</h2>
-        <p data-field="methodology-intro"></p>
-        <p>
-          <strong>The formula:</strong> a country's chance of being picked is
-          its estimated annual live births divided by the world's estimated
-          annual live births, where annual births = population × crude birth
-          rate ÷ 1,000. Every figure comes from the
-          <a href="https://data.worldbank.org/" rel="noopener">World Bank Open
-          Data</a>
-          API (CC BY‑4.0), and each one is shown with the year it was actually
-          reported for that country — figures land in different years because
-          countries report on different schedules, not because any were
-          cherry-picked. The globe's own spin is calculated too: it always
-          turns forward to the exact longitude of the country you drew, never
-          a faked snap-to-position. Tap any dot on the photo above to see a
-          stat's exact indicator and year.
-        </p>
-        <p>
-          <strong>The capital-city photo:</strong> fetched live, no secrets
-          there either — a keyless, CORS-open Wikipedia lookup for the
-          capital's own photo, tried first by its plain name and then paired
-          with its country if that's ambiguous. When no good match exists (or
-          the request fails), a generic illustrated skyline stands in instead,
-          so the page never shows a broken image.
-        </p>
-        <p data-field="methodology-detail"></p>
-        <p>
-          "Chance of surviving your first year", "childbirth risk", and "health
-          risks adults here face" are honest proxies built from infant
-          mortality, maternal mortality, and adult mortality data — not literal
-          measurements of any individual's parents. Countries without
-          population or birth-rate data are left out of the lottery pool
-          entirely rather than guessed at; a missing stat for an included
-          country shows as "not reported" on its dot, never invented. Each
-          stat's "world average" marker is this page's own population-weighted
-          average across the lottery pool — weighted the same way the odds
-          themselves are, not a World Bank global aggregate figure.
-        </p>
-      </section>
+      <button
+        type="button"
+        class="help-toggle"
+        data-testid="help-toggle"
+        data-field="help-toggle"
+        aria-label="How this works"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="help-dialog"
+      >
+        <span aria-hidden="true">?</span>
+      </button>
+
+      <!-- The backdrop carries `hidden`, never the methodology section itself:
+           the working is part of what this page ships, one button away at all
+           times, not something the page can be built without. -->
+      <div class="help-backdrop" data-field="help-backdrop" hidden>
+        <div
+          class="help-dialog"
+          id="help-dialog"
+          data-field="help-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="methodology-heading"
+          tabindex="-1"
+        >
+          <button
+            type="button"
+            class="help-close"
+            data-field="help-close"
+            aria-label="Close how this works"
+          >
+            &times;
+          </button>
+
+          <section class="methodology" data-testid="methodology">
+            <h2 id="methodology-heading">How these odds are calculated — no secrets</h2>
+            <p data-field="methodology-intro"></p>
+            <p>
+              <strong>The formula:</strong> a country's chance of being picked is
+              its estimated annual live births divided by the world's estimated
+              annual live births, where annual births = population × crude birth
+              rate ÷ 1,000. Every figure comes from the
+              <a href="https://data.worldbank.org/" rel="noopener">World Bank Open
+              Data</a>
+              API (CC BY‑4.0), and each one is shown with the year it was actually
+              reported for that country — figures land in different years because
+              countries report on different schedules, not because any were
+              cherry-picked. The globe's own spin is calculated too: it always
+              turns forward to the exact longitude of the country you drew, never
+              a faked snap-to-position. Tap any dot on the capital photo to see a
+              stat's exact indicator and year.
+            </p>
+            <p>
+              <strong>The capital-city photo:</strong> fetched live, no secrets
+              there either — a keyless, CORS-open Wikipedia lookup for the
+              capital's own photo, tried first by its plain name and then paired
+              with its country if that's ambiguous. When no good match exists (or
+              the request fails), a generic illustrated skyline stands in instead,
+              so the page never shows a broken image.
+            </p>
+            <p data-field="methodology-detail">
+              Spin once and this line shows the exact arithmetic for the country
+              you drew, figure by figure.
+            </p>
+            <p>
+              "Chance of surviving your first year", "childbirth risk", and "health
+              risks adults here face" are honest proxies built from infant
+              mortality, maternal mortality, and adult mortality data — not literal
+              measurements of any individual's parents. Countries without
+              population or birth-rate data are left out of the lottery pool
+              entirely rather than guessed at; a missing stat for an included
+              country shows as "not reported" on its dot, never invented. Each
+              stat's "world average" marker is this page's own population-weighted
+              average across the lottery pool — weighted the same way the odds
+              themselves are, not a World Bank global aggregate figure.
+            </p>
+          </section>
+        </div>
+      </div>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

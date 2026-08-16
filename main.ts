@@ -26,9 +26,11 @@ const allCountries = data.countries;
 const worldBirths = allCountries.reduce((sum, c) => sum + annualBirths(c), 0);
 
 const heroEl = document.querySelector<HTMLElement>(".hero")!;
+const landingEl = document.querySelector<HTMLElement>('[data-field="landing"]')!;
+const landingCanvas = document.querySelector<HTMLCanvasElement>('[data-field="landing-globe"]')!;
+const startBtn = document.querySelector<HTMLButtonElement>('[data-testid="start"]')!;
 const frameEl = document.querySelector<HTMLElement>('[data-field="frame"]')!;
 const globeCanvas = document.querySelector<HTMLCanvasElement>('[data-field="globe"]')!;
-const ctx = globeCanvas.getContext("2d")!;
 const skylineEl = document.querySelector<HTMLElement>('[data-testid="skyline"]')!;
 const skylinePhotoEl = document.querySelector<HTMLElement>('[data-field="skyline-photo"]')!;
 const photoCreditEl = document.querySelector<HTMLElement>('[data-field="photo-credit"]')!;
@@ -45,6 +47,10 @@ const popoverBodyEl = document.querySelector<HTMLElement>('[data-field="popover-
 const popoverCloseEl = document.querySelector<HTMLButtonElement>('[data-field="popover-close"]')!;
 const methodologyIntroEl = document.querySelector<HTMLElement>('[data-field="methodology-intro"]')!;
 const methodologyDetailEl = document.querySelector<HTMLElement>('[data-field="methodology-detail"]')!;
+const helpToggleEl = document.querySelector<HTMLButtonElement>('[data-field="help-toggle"]')!;
+const helpBackdropEl = document.querySelector<HTMLElement>('[data-field="help-backdrop"]')!;
+const helpDialogEl = document.querySelector<HTMLElement>('[data-field="help-dialog"]')!;
+const helpCloseEl = document.querySelector<HTMLButtonElement>('[data-field="help-close"]')!;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -164,24 +170,24 @@ const connectivityMeta = withMeta([
 
 const allStatMeta: StatMeta[] = [...healthMeta, ...needsMeta, ...economyMeta, ...connectivityMeta];
 
-// Fixed points spread across the frame's middle band, same 11 spots for every
-// country. Unlike the old fixed illustration, the background photo now varies
-// per country, so these can no longer be "placed on a building" -- instead
-// they're staggered across y: 14%-64% (clear of the bottom title scrim/spin
-// button) with enough horizontal spread to leave room for each dot's
-// always-visible label above it.
+// Fixed points spread across the frame, same 11 spots for every country. Laid
+// out in five rows so each dot's always-visible label has clear air above it,
+// and so the lower rows sit right of centre -- the hero copy is bottom-left, and
+// a label landing on the title is the one collision the layout can't tolerate.
+// .stat-dots is inset in CSS (per viewport) to keep the whole field clear of
+// that copy on phones, where it runs the full width.
 const hotspotPositions: Array<{ xPct: number; yPct: number }> = [
-  { xPct: 8, yPct: 20 },
-  { xPct: 8, yPct: 50 },
-  { xPct: 22, yPct: 34 },
-  { xPct: 22, yPct: 62 },
-  { xPct: 37, yPct: 18 },
-  { xPct: 50, yPct: 44 },
-  { xPct: 50, yPct: 64 },
-  { xPct: 63, yPct: 22 },
-  { xPct: 78, yPct: 38 },
-  { xPct: 78, yPct: 60 },
-  { xPct: 92, yPct: 24 },
+  { xPct: 14, yPct: 6 },
+  { xPct: 52, yPct: 6 },
+  { xPct: 8, yPct: 29 },
+  { xPct: 44, yPct: 29 },
+  { xPct: 80, yPct: 29 },
+  { xPct: 24, yPct: 52 },
+  { xPct: 58, yPct: 52 },
+  { xPct: 92, yPct: 52 },
+  { xPct: 60, yPct: 75 },
+  { xPct: 92, yPct: 75 },
+  { xPct: 78, yPct: 96 },
 ];
 
 // --- Capital-city photo (Wikipedia, keyless + CORS-open) --------------------
@@ -305,30 +311,33 @@ function resetPhotoLayer(): void {
 
 function applyPhoto(photo: CapitalPhoto | null): void {
   if (!photo) return; // generative skyline underneath stays visible
+  const credit = photo.credit;
   const preload = new Image();
+  // Credit goes up with the photo, not before it: until onload the silhouette
+  // is still what's on screen, and crediting a photographer for it is wrong.
   preload.onload = () => {
     skylinePhotoEl.style.backgroundImage = `url("${photo.url}")`;
     skylinePhotoEl.classList.add("visible");
-  };
-  preload.src = photo.url;
-
-  if (photo.credit) {
+    if (!credit) return;
     const link = document.createElement("a");
-    link.href = photo.credit.sourceUrl;
+    link.href = credit.sourceUrl;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = photo.credit.name;
-    photoCreditEl.replaceChildren("Photo: ", link, ` (${photo.credit.license}) · Wikimedia Commons`);
+    link.textContent = credit.name;
+    photoCreditEl.replaceChildren("Photo: ", link, ` (${credit.license}) · Wikimedia Commons`);
     photoCreditEl.hidden = false;
-  }
+  };
+  preload.src = photo.url;
 }
 
 function animateNumber(el: HTMLElement, target: number, format: (value: number) => string): void {
-  const duration = 900;
+  const duration = 1000;
   const start = performance.now();
   function tick(now: number) {
     const elapsed = Math.min(1, (now - start) / duration);
-    const eased = 1 - (1 - elapsed) ** 3;
+    // easeOutExpo -- lands on the figure early and settles, rather than the
+    // long linear-ish crawl an easeOutCubic leaves at the tail.
+    const eased = elapsed === 1 ? 1 : 1 - 2 ** (-10 * elapsed);
     el.textContent = format(target * eased);
     if (elapsed < 1) requestAnimationFrame(tick);
   }
@@ -338,29 +347,42 @@ function animateNumber(el: HTMLElement, target: number, format: (value: number) 
 // --- Stat hotspot dots + popover ------------------------------------------
 
 let openPopover: { dot: HTMLButtonElement; meta: StatMeta } | null = null;
+let popoverHideTimer = 0;
 
 function closePopover(): void {
-  popoverEl.hidden = true;
   if (openPopover) {
     openPopover.dot.setAttribute("aria-expanded", "false");
     openPopover = null;
   }
+  // Kept in the layout until the exit transition finishes, then hidden for
+  // real so it stays out of the a11y tree and off the tab order.
+  popoverEl.classList.remove("open");
+  clearTimeout(popoverHideTimer);
+  popoverHideTimer = window.setTimeout(
+    () => {
+      popoverEl.hidden = true;
+    },
+    prefersReducedMotion ? 0 : 180,
+  );
 }
 
+// Measured from the layout box, not getBoundingClientRect: the entrance
+// transition scales the popover, and a scaled rect would mis-centre it.
 function positionPopover(dot: HTMLButtonElement): void {
   const heroRect = heroEl.getBoundingClientRect();
   const dotRect = dot.getBoundingClientRect();
-  const popRect = popoverEl.getBoundingClientRect();
+  const popWidth = popoverEl.offsetWidth;
+  const popHeight = popoverEl.offsetHeight;
   const margin = 12;
 
-  let left = dotRect.left - heroRect.left + dotRect.width / 2 - popRect.width / 2;
-  left = Math.min(Math.max(left, margin), heroRect.width - popRect.width - margin);
+  let left = dotRect.left - heroRect.left + dotRect.width / 2 - popWidth / 2;
+  left = Math.min(Math.max(left, margin), heroRect.width - popWidth - margin);
 
-  let top = dotRect.top - heroRect.top - popRect.height - 14;
+  let top = dotRect.top - heroRect.top - popHeight - 14;
   if (top < margin) {
     top = dotRect.bottom - heroRect.top + 14;
   }
-  top = Math.min(Math.max(top, margin), heroRect.height - popRect.height - margin);
+  top = Math.min(Math.max(top, margin), heroRect.height - popHeight - margin);
 
   popoverEl.style.left = `${left}px`;
   popoverEl.style.top = `${top}px`;
@@ -422,10 +444,13 @@ function openPopoverFor(dot: HTMLButtonElement, meta: StatMeta, country: Country
   }
 
   popoverBodyEl.replaceChildren(labelEl, valueEl, barTrack, detail);
+  clearTimeout(popoverHideTimer);
   popoverEl.hidden = false;
   dot.setAttribute("aria-expanded", "true");
   openPopover = { dot, meta };
   positionPopover(dot);
+  // Placed before the entrance runs, so it grows from where it will sit.
+  requestAnimationFrame(() => popoverEl.classList.add("open"));
 }
 
 function renderHotspots(country: Country): void {
@@ -449,6 +474,7 @@ function renderHotspots(country: Country): void {
     dot.className = "stat-dot";
     dot.style.left = `${pos.xPct}%`;
     dot.style.top = `${pos.yPct}%`;
+    dot.style.setProperty("--i", String(i)); // drives the reveal stagger in CSS
     dot.setAttribute("aria-expanded", "false");
     dot.setAttribute("aria-description", "Tap for the figure");
     dot.append(label, mark);
@@ -530,40 +556,250 @@ function easeOutQuint(t: number): number {
   return 1 - (1 - t) ** 5;
 }
 
-function resizeCanvas(): void {
-  const dpr = window.devicePixelRatio || 1;
-  const rect = frameEl.getBoundingClientRect();
-  globeCanvas.width = Math.max(1, Math.round(rect.width * dpr));
-  globeCanvas.height = Math.max(1, Math.round(rect.height * dpr));
-  globeCanvas.style.width = `${rect.width}px`;
-  globeCanvas.style.height = `${rect.height}px`;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+// Coarse continent outlines as flat [lon, lat, ...] pairs of real degrees, run
+// through the same orthographic projection the country dots use. Deliberately
+// low-poly, and split where a landmass spans too much longitude to survive
+// being half-turned away (North America at -100, Eurasia along its length):
+// this is a sphere a few hundred pixels across that never stops turning, so
+// silhouette is the only thing that reads, and coastline detail is cost with
+// nothing to show for it.
+const LANDMASSES: number[][] = [
+  // Africa
+  [
+    -17, 14, -16, 20, -12, 27, -9, 32, -5, 36, 10, 37, 20, 32, 25, 32, 32, 31, 35, 28, 37, 22, 39, 15,
+    43, 11, 51, 11, 51, 5, 41, -2, 40, -10, 35, -18, 33, -26, 32, -29, 28, -33, 25, -34, 18, -34,
+    15, -27, 12, -18, 13, -9, 9, -1, 9, 4, 3, 6, -5, 5, -8, 4, -13, 8,
+  ],
+  // Europe
+  [
+    -9, 37, -9, 43, -1, 44, -2, 48, 2, 51, 5, 53, 8, 55, 10, 58, 6, 61, 12, 66, 20, 70, 28, 71,
+    33, 69, 32, 60, 28, 58, 24, 56, 21, 55, 19, 50, 22, 46, 28, 45, 28, 41, 23, 40, 16, 42, 12, 45,
+    7, 44, 3, 42, -2, 37,
+  ],
+  // Britain and Ireland
+  [-5, 50, -3, 53, -3, 58, -5, 58, -8, 55, -10, 52, -6, 50],
+  // Russia, west of the Yenisei
+  [
+    33, 69, 45, 67, 60, 70, 75, 73, 90, 75, 95, 72, 92, 64, 85, 58, 78, 55, 70, 53, 62, 52, 55, 52,
+    48, 50, 42, 46, 38, 45, 33, 52,
+  ],
+  // Siberia and the Russian far east
+  [
+    95, 72, 105, 76, 115, 74, 128, 73, 140, 72, 150, 70, 160, 69, 170, 67, 180, 66, 178, 60, 170, 60,
+    163, 58, 158, 52, 145, 45, 140, 40, 130, 42, 125, 50, 120, 53, 115, 50, 110, 50, 105, 52, 100, 52,
+    95, 55, 92, 64,
+  ],
+  // China and mainland south-east Asia
+  [
+    92, 28, 95, 33, 100, 38, 105, 40, 110, 42, 118, 40, 122, 38, 122, 32, 118, 25, 110, 21, 108, 15,
+    106, 10, 103, 1, 100, 7, 98, 10, 99, 20, 95, 22,
+  ],
+  // South Asia
+  [68, 24, 70, 28, 75, 32, 80, 30, 88, 27, 92, 25, 92, 22, 88, 21, 85, 19, 80, 15, 77, 8, 73, 16, 70, 20],
+  // Arabia, Iran and Anatolia
+  [35, 37, 40, 38, 45, 39, 50, 40, 55, 38, 60, 37, 60, 30, 58, 25, 56, 26, 52, 24, 50, 20, 45, 13, 43, 13, 40, 20, 37, 28, 35, 30],
+  // Australia
+  [
+    113, -22, 114, -26, 115, -34, 118, -35, 123, -34, 129, -32, 134, -33, 138, -35, 145, -38, 150, -37,
+    153, -28, 153, -25, 146, -19, 142, -11, 136, -12, 130, -11, 126, -14, 122, -18, 117, -20,
+  ],
+  // South America
+  [
+    -77, 8, -72, 11, -62, 10, -52, 5, -50, 0, -44, -2, -35, -6, -38, -13, -40, -20, -48, -25, -53, -34,
+    -58, -38, -62, -40, -65, -45, -68, -52, -72, -52, -71, -45, -73, -37, -71, -30, -70, -22, -76, -14,
+    -81, -6, -80, 0, -78, 2,
+  ],
+  // North America, west of the 100th meridian
+  [
+    -168, 66, -160, 70, -145, 70, -130, 70, -115, 70, -100, 70, -100, 25, -105, 22, -110, 24, -114, 28,
+    -118, 31, -122, 37, -124, 42, -124, 48, -128, 52, -135, 58, -145, 60, -155, 58, -166, 60,
+  ],
+  // North America, east of it -- the shared straight seam is invisible once both are filled
+  [
+    -100, 70, -90, 72, -82, 73, -78, 70, -70, 62, -64, 58, -56, 52, -62, 47, -70, 45, -74, 40, -78, 35,
+    -81, 31, -80, 25, -85, 30, -90, 29, -97, 26, -100, 25,
+  ],
+  // Central America
+  [-92, 18, -88, 21, -86, 16, -83, 10, -79, 9, -77, 8, -83, 8, -87, 13, -92, 15],
+  // Greenland
+  [-45, 60, -50, 65, -55, 70, -60, 76, -50, 82, -30, 83, -22, 75, -25, 70, -35, 66],
+];
+
+/** One canvas showing the globe. Two exist -- the landing's and the hero's --
+ * and both are drawn by the same code at the same rotation, so the handoff
+ * between the screens is a cross-fade between two views of one world rather
+ * than two implementations that could drift apart. */
+interface GlobeView {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  /** The box the canvas fills. Measured instead of the canvas itself, because
+   * the canvas is CSS-transformed (the zoom, the handoff) and its own rect
+   * would report the transformed size. */
+  host: HTMLElement;
+  radiusFactor: number;
+  width: number;
+  height: number;
+  /** Whether this view's screen is on-screen right now. Both are live during
+   * the handoff; a view whose screen is display:none is not drawn at all. */
+  live: boolean;
 }
 
-function drawGlobe(atRotation: number): void {
-  const rect = frameEl.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
+function createView(canvas: HTMLCanvasElement, host: HTMLElement, radiusFactor: number): GlobeView {
+  return { canvas, ctx: canvas.getContext("2d")!, host, radiusFactor, width: 0, height: 0, live: false };
+}
+
+const landingView = createView(landingCanvas, landingEl, 0.42);
+const heroView = createView(globeCanvas, frameEl, 0.34);
+const views = [landingView, heroView];
+
+function sizeView(view: GlobeView): void {
+  const rect = view.host.getBoundingClientRect();
+  view.width = rect.width;
+  view.height = rect.height;
+  // A hidden screen measures zero: leave the canvas alone and wait to be
+  // called again when it is revealed (see the ResizeObserver below).
+  if (rect.width === 0 || rect.height === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  view.canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  view.canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  view.canvas.style.width = `${rect.width}px`;
+  view.canvas.style.height = `${rect.height}px`;
+  view.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function resizeCanvas(): void {
+  for (const view of views) sizeView(view);
+}
+
+// Where the sun is, as a fraction of the radius from the centre. Everything
+// that suggests a lit ball rather than a flat disc -- the ocean gradient, the
+// terminator, the bright rim -- is placed from this one vector.
+const LIGHT_X = -0.4;
+const LIGHT_Y = -0.45;
+
+function drawLandmasses(view: GlobeView, cx: number, cy: number, radius: number, atRotation: number): void {
+  const { ctx } = view;
+  ctx.fillStyle = "#487f60";
+  for (const points of LANDMASSES) {
+    let anyVisible = false;
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i += 2) {
+      const point = projectGlobe(points[i], points[i + 1], atRotation);
+      let dx = (point.xPct - 50) / 50;
+      let dy = (point.yPct - 50) / 50;
+      if (point.depth < 0) {
+        // Behind the sphere: push the vertex out to the limb, so a landmass
+        // turning away hugs the edge instead of folding back through the face.
+        const length = Math.hypot(dx, dy) || 1;
+        dx /= length;
+        dy /= length;
+      } else {
+        anyVisible = true;
+      }
+      const x = cx + dx * radius;
+      const y = cy + dy * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    if (anyVisible) ctx.fill();
+  }
+}
+
+function drawGraticule(view: GlobeView, cx: number, cy: number, radius: number, atRotation: number): void {
+  const { ctx } = view;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.085)";
+  ctx.lineWidth = 1;
+
+  const plot = (lon: number, lat: number, penDown: boolean): boolean => {
+    const point = projectGlobe(lon, lat, atRotation);
+    if (point.depth < 0) return false; // gone round the back -- lift the pen
+    const x = cx + ((point.xPct - 50) / 50) * radius;
+    const y = cy + ((point.yPct - 50) / 50) * radius;
+    if (penDown) ctx.lineTo(x, y);
+    else ctx.moveTo(x, y);
+    return true;
+  };
+
+  ctx.beginPath();
+  for (let lon = -180; lon < 180; lon += 30) {
+    let penDown = false;
+    for (let lat = -80; lat <= 80; lat += 10) penDown = plot(lon, lat, penDown);
+  }
+  for (let lat = -60; lat <= 60; lat += 30) {
+    let penDown = false;
+    for (let lon = -180; lon <= 180; lon += 10) penDown = plot(lon, lat, penDown);
+  }
+  ctx.stroke();
+}
+
+function drawView(view: GlobeView, atRotation: number): void {
+  const { ctx, width: w, height: h } = view;
   if (w === 0 || h === 0) return;
 
   ctx.clearRect(0, 0, w, h);
 
   const cx = w / 2;
   const cy = h / 2;
-  const radius = Math.min(w, h) * 0.34;
+  const radius = Math.min(w, h) * view.radiusFactor;
+  const lightX = cx + LIGHT_X * radius;
+  const lightY = cy + LIGHT_Y * radius;
 
-  const body = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.35, radius * 0.08, cx, cy, radius);
-  body.addColorStop(0, "#33517a");
-  body.addColorStop(0.7, "#182b40");
-  body.addColorStop(1, "#0a1420");
+  // Atmosphere: a halo just outside the sphere, brightest where the light is.
+  const halo = ctx.createRadialGradient(cx, cy, radius * 0.96, cx, cy, radius * 1.16);
+  halo.addColorStop(0, "rgba(96, 165, 232, 0.34)");
+  halo.addColorStop(0.55, "rgba(70, 130, 200, 0.12)");
+  halo.addColorStop(1, "rgba(60, 120, 190, 0)");
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 1.16, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
+
+  // Ocean, lit from LIGHT_X/LIGHT_Y rather than filled flat.
+  const ocean = ctx.createRadialGradient(lightX, lightY, radius * 0.05, cx, cy, radius * 1.05);
+  ocean.addColorStop(0, "#3d6f9e");
+  ocean.addColorStop(0.45, "#1f4568");
+  ocean.addColorStop(1, "#0b1e33");
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = body;
+  ctx.fillStyle = ocean;
   ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+
+  // Everything on the surface is clipped to the sphere: limb-clamped coastline
+  // vertices land exactly on the edge, and rounding shouldn't spill past it.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  drawLandmasses(view, cx, cy, radius, atRotation);
+  drawGraticule(view, cx, cy, radius, atRotation);
+
+  // Day/night: the same light vector again, darkening away from it into the
+  // far limb, which is what stops the sphere reading as a flat disc.
+  const terminator = ctx.createRadialGradient(lightX, lightY, radius * 0.1, lightX, lightY, radius * 2.05);
+  terminator.addColorStop(0, "rgba(4, 10, 20, 0)");
+  terminator.addColorStop(0.45, "rgba(4, 10, 20, 0.22)");
+  terminator.addColorStop(1, "rgba(2, 6, 14, 0.82)");
+  ctx.fillStyle = terminator;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+  ctx.restore();
+
+  // Rim light along the lit edge -- drawn after the terminator so the far limb
+  // keeps its darkness and only the sunward side catches the highlight.
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(1, radius * 0.008);
+  const rim = ctx.createLinearGradient(cx + LIGHT_X * radius, cy + LIGHT_Y * radius, cx - LIGHT_X * radius, cy - LIGHT_Y * radius);
+  rim.addColorStop(0, "rgba(173, 216, 255, 0.75)");
+  rim.addColorStop(0.55, "rgba(120, 175, 235, 0.18)");
+  rim.addColorStop(1, "rgba(120, 175, 235, 0.05)");
+  ctx.strokeStyle = rim;
   ctx.stroke();
 
+  // The data layer, on top of the shading: one dot per country, sized by its
+  // share of the world's births. Far-side dots stay faint rather than vanish.
   const projected = allCountries
     .map((country) => ({ country, point: projectGlobe(country.lon, country.lat, atRotation) }))
     .sort((a, b) => a.point.depth - b.point.depth);
@@ -575,12 +811,18 @@ function drawGlobe(atRotation: number): void {
     const size = baseSize * (0.35 + 0.65 * depthT);
     const x = cx + ((point.xPct - 50) / 50) * radius;
     const y = cy + ((point.yPct - 50) / 50) * radius;
-    const alpha = 0.22 + 0.78 * depthT;
+    const alpha = 0.18 + 0.72 * depthT;
 
     ctx.beginPath();
     ctx.arc(x, y, Math.max(0.6, size / 2), 0, Math.PI * 2);
     ctx.fillStyle = `rgba(242, 201, 76, ${alpha.toFixed(3)})`;
     ctx.fill();
+  }
+}
+
+function drawGlobe(atRotation: number): void {
+  for (const view of views) {
+    if (view.live) drawView(view, atRotation);
   }
 }
 
@@ -676,11 +918,111 @@ function spin(): void {
   beginSpin(pickCountry(allCountries));
 }
 
+// --- Landing -> game handoff ------------------------------------------------
+
+const HANDOFF_MS = 760;
+
+let currentScreen: "landing" | "game" = "landing";
+
+function startGame(): void {
+  if (currentScreen === "game") return;
+  currentScreen = "game";
+
+  heroEl.hidden = false;
+  heroView.live = true;
+  // The hero canvas had no box at all until this line: it was display:none at
+  // load, so anything measured then would have sized it to zero. Measure and
+  // draw now, in the frame it becomes visible.
+  sizeView(heroView);
+  drawGlobe(rotation);
+
+  landingEl.classList.add("leaving");
+  heroEl.classList.add("entering");
+
+  window.setTimeout(
+    () => {
+      landingEl.hidden = true;
+      landingView.live = false;
+      heroEl.classList.remove("entering");
+      // Hands the keyboard straight to the control that replaced Start.
+      spinBtn.focus();
+    },
+    prefersReducedMotion ? 0 : HANDOFF_MS,
+  );
+}
+
+// --- "How this works" dialog ------------------------------------------------
+
+let helpHideTimer = 0;
+
+function isHelpOpen(): boolean {
+  return !helpBackdropEl.hidden;
+}
+
+function openHelp(): void {
+  if (isHelpOpen()) return;
+  clearTimeout(helpHideTimer);
+  helpBackdropEl.hidden = false;
+  helpToggleEl.setAttribute("aria-expanded", "true");
+  // Same order as the stat popover: in the layout at its from-state for a
+  // frame, then transitioned open -- and focused once it is really there.
+  requestAnimationFrame(() => {
+    helpBackdropEl.classList.add("open");
+    helpDialogEl.focus();
+  });
+}
+
+function closeHelp(): void {
+  if (!isHelpOpen()) return;
+  helpBackdropEl.classList.remove("open");
+  helpToggleEl.setAttribute("aria-expanded", "false");
+  clearTimeout(helpHideTimer);
+  helpHideTimer = window.setTimeout(
+    () => {
+      helpBackdropEl.hidden = true;
+    },
+    prefersReducedMotion ? 0 : 220,
+  );
+  helpToggleEl.focus();
+}
+
+helpToggleEl.addEventListener("click", () => {
+  if (isHelpOpen()) closeHelp();
+  else openHelp();
+});
+
+helpCloseEl.addEventListener("click", closeHelp);
+
+helpBackdropEl.addEventListener("click", (event) => {
+  if (event.target === helpBackdropEl) closeHelp();
+});
+
+// aria-modal hides the rest of the page from assistive tech, but a sighted
+// keyboard user can still tab straight out of a dialog nothing has made inert.
+helpDialogEl.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab") return;
+  const focusable = [...helpDialogEl.querySelectorAll<HTMLElement>("button, a[href]")];
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || active === helpDialogEl)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+// --- Boot -------------------------------------------------------------------
+
 const sourceNames = data.meta.sources.map((s) => s.name).join(" and ");
 methodologyIntroEl.textContent =
   `Dataset compiled ${data.meta.compiledAt} from ${sourceNames}. ${allCountries.length} countries have ` +
   `enough data to be in the lottery pool; each is weighted by its own real population and birth-rate figures.`;
 
+landingView.live = true;
 resizeCanvas();
 if (prefersReducedMotion) {
   drawGlobe(rotation);
@@ -688,20 +1030,32 @@ if (prefersReducedMotion) {
   scheduleFrame();
 }
 
-window.addEventListener("resize", () => {
+function handleLayoutChange(): void {
   resizeCanvas();
   drawGlobe(rotation);
   if (openPopover) positionPopover(openPopover.dot);
-});
+}
 
+window.addEventListener("resize", handleLayoutChange);
+
+// Catches the resizes a window `resize` event never reports: a screen being
+// revealed with a real box for the first time, and the mobile URL bar or an
+// orientation change resizing a screen without resizing the window.
+const layoutObserver = new ResizeObserver(handleLayoutChange);
+for (const view of views) layoutObserver.observe(view.host);
+
+startBtn.addEventListener("click", startGame);
 spinBtn.addEventListener("click", spin);
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    if (openPopover) closePopover();
+    if (isHelpOpen()) closeHelp();
+    else if (openPopover) closePopover();
     return;
   }
   if (event.code !== "Space" && event.code !== "Enter") return;
   if (document.activeElement !== document.body) return;
+  if (isHelpOpen()) return;
   event.preventDefault();
-  spin();
+  if (currentScreen === "landing") startGame();
+  else spin();
 });
